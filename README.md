@@ -26,10 +26,28 @@ This plugin generates its own fragment instead: the same one, with `--disableui`
 | Public HTTP surface    | `/lit/` plus the `lnrpc.` / `looprpc.` / `poolrpc.` / `litrpc.` gRPC-web endpoints | none |
 | How you manage the node | litd's web UI                | this plugin, and Terminal on the web over LNC |
 | litd image             | `…-path-prefix` rebuild (needed only to serve the UI under `/lit/`) | the plain Lightning Labs release image |
+| litd's listener        | `--insecure-httplisten` on `:8080`, for nginx to proxy | `--httpslisten` on `:8443`, no plaintext port |
+| Bitcoin Core data dir  | mounted into litd, for Faraday's `connect_bitcoin` | not mounted |
 
-Everything else — the remote-LND wiring, the Faraday/bitcoind connection, the `lnd_lit_datadir`
-volume, `rpcmiddleware.enable=true` on LND — is identical to upstream's, deliberately. The two
-fragments share a volume name, so you can move between them without losing litd's data.
+The remote-LND wiring, the `lnd_lit_datadir` volume and `rpcmiddleware.enable=true` on LND are
+identical to upstream's, deliberately — the two fragments share a volume name, so you can move
+between them without losing litd's data.
+
+Two further trims beyond turning the UI off:
+
+- **No plaintext listener.** Upstream needs `--insecure-httplisten` because nginx proxies `/lit/` to
+  it. This plugin speaks TLS gRPC, so a plaintext port carrying macaroons is pure attack surface.
+  `--httpslisten` has to be set explicitly all the same: litd defaults it to `127.0.0.1:8443`, which
+  is loopback inside litd's own container and unreachable from BTCPay's.
+- **No Faraday bitcoind wiring.** `connect_bitcoin` defaults off. Leaving it off costs the handful of
+  Faraday endpoints that need chain data, and in exchange litd has no mount into Bitcoin Core's data
+  directory. Add the four `--faraday.bitcoin.*` flags and the `bitcoin_datadir` mount back if you
+  want those endpoints.
+
+`LIT_AUTO_MIGRATE_TO_SQL` is not set either: litd has defaulted to SQLite since v0.17 and only
+prompts when it finds legacy kvdb files, so a fresh install never sees that prompt. If you are
+switching from a long-lived upstream install that predates v0.17, litd will stop at the migration
+prompt on first start — its log says exactly which flag approves it.
 
 If you already run the stock fragment, the plugin detects it and offers to switch.
 

@@ -18,8 +18,8 @@ public class TerminalOptions
     public TerminalOptions(IConfiguration configuration, BTCPayServerOptions serverOptions)
         : this(
             configuration["terminallitdatadir"] ?? "/lit",
-            configuration["terminallitrpchost"] ?? "lnd_lit",
-            int.TryParse(configuration["terminallitrpcport"], out var port) ? port : 8443,
+            configuration["terminallitrpchost"] ?? DefaultRpcHost,
+            int.TryParse(configuration["terminallitrpcport"], out var port) ? port : DefaultRpcPort,
             configuration["terminallitnetwork"] ?? serverOptions.NetworkType.ToString())
     {
     }
@@ -34,6 +34,22 @@ public class TerminalOptions
 
     /// <summary>litd's <c>--lit-dir</c> (<c>lnd_lit_datadir</c>) as mounted into this container.</summary>
     public string LitDataDirectory { get; }
+
+    /// <summary>
+    /// Compose service name of the litd container, which doubles as its DNS name. The generated
+    /// fragment declares the service under this exact name - see <see cref="LitdFragment"/>.
+    /// </summary>
+    public const string DefaultRpcHost = "lnd_lit";
+
+    /// <summary>
+    /// litd's <c>--httpslisten</c> port, which the generated fragment sets explicitly.
+    /// </summary>
+    /// <remarks>
+    /// litd defaults this to <c>127.0.0.1:8443</c> - loopback inside its own container, which a
+    /// sibling container cannot reach at all. The fragment has to bind it to <c>0.0.0.0</c> on this
+    /// port or nothing here can talk to litd.
+    /// </remarks>
+    public const int DefaultRpcPort = 8443;
 
     /// <summary>Compose service name of the litd container, which doubles as its DNS name.</summary>
     public string RpcHost { get; }
