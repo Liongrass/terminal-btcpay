@@ -128,7 +128,13 @@ web with the pairing phrase already filled in. Node and browser meet through lit
 your node never has to be reachable from the internet. The phrase travels in the URL *fragment*, so it
 stays in the browser and is never sent to Terminal's web server.
 
-A phrase pairs one browser, once. Sessions are listed on the plugin page with their state, and can be
+**Generate pairing phrase** is the manual counterpart: pick the label, type (Admin, Read-Only or
+Custodial), lifetime and mailbox server, and it hands you the phrase for any LNC client. A Custodial
+session is scoped to one of litd's accounts, which the form lists from litd directly. Custom sessions
+are not offered — litd rejects that type unless the request carries explicit macaroon permissions, so
+it would need a permissions editor to be worth anything.
+
+A phrase pairs one client, once. Sessions are listed on the plugin page with their state, and can be
 revoked there.
 
 These are **admin** sessions: whoever holds the phrase can move funds and manage channels. The whole

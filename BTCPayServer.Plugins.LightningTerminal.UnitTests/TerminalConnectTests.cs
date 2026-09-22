@@ -52,3 +52,54 @@ public class TerminalConnectTests
     public void TypeLabelsMatchTerminalsVocabulary(SessionType type, string expected) =>
         Assert.Equal(expected, TerminalConnect.TypeLabel(type));
 }
+
+/// <summary>
+/// Which session types the manual form is allowed to offer.
+/// </summary>
+public class CreatableSessionTypeTests
+{
+    [Fact]
+    public void CustomIsNotOffered()
+    {
+        // litd's AddSession returns "custom macaroon permissions must be specified for the custom
+        // macaroon session type" unless the request carries explicit permissions. With no permissions
+        // editor here, offering it would only ever produce that error.
+        Assert.DoesNotContain(SessionType.TypeMacaroonCustom, TerminalConnect.CreatableTypes);
+    }
+
+    [Fact]
+    public void LitdsOwnSessionTypesAreNotOffered()
+    {
+        // litd mints these itself - a UI-password session for its web UI, which this plugin disables,
+        // and autopilot sessions for the Autopilot server.
+        Assert.DoesNotContain(SessionType.TypeUiPassword, TerminalConnect.CreatableTypes);
+        Assert.DoesNotContain(SessionType.TypeAutopilot, TerminalConnect.CreatableTypes);
+    }
+
+    [Fact]
+    public void TheTypesThatNeedNoExtraInputAreOffered()
+    {
+        Assert.Contains(SessionType.TypeMacaroonAdmin, TerminalConnect.CreatableTypes);
+        Assert.Contains(SessionType.TypeMacaroonReadonly, TerminalConnect.CreatableTypes);
+        // Account needs an id, which the form collects and validates before litd sees it.
+        Assert.Contains(SessionType.TypeMacaroonAccount, TerminalConnect.CreatableTypes);
+    }
+
+    [Fact]
+    public void EveryOfferedTypeHasALabelTerminalUnderstands()
+    {
+        foreach (var type in TerminalConnect.CreatableTypes)
+            Assert.NotEqual("Unknown", TerminalConnect.TypeLabel(type));
+    }
+
+    [Fact]
+    public void TheFormStartsOnTheSameDefaultsAsOneClickConnect()
+    {
+        var model = new ViewModels.NewSessionViewModel();
+
+        Assert.Equal(SessionType.TypeMacaroonAdmin, model.Type);
+        Assert.Equal(LitdClient.DefaultMailboxServer, model.MailboxServer);
+        // litcli's own default expiry, so a phrase minted here behaves like one minted with litcli.
+        Assert.Equal(90, model.ExpiryDays);
+    }
+}

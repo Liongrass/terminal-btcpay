@@ -5,6 +5,7 @@ using BTCPayServer.Configuration;
 using BTCPayServer.Plugins.LightningTerminal.Services;
 using BTCPayServer.Plugins.LightningTerminal.ViewModels;
 using Grpc.Core;
+using Litrpc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -34,6 +35,12 @@ public class UILightningTerminalController(
     /// behaves the same as one minted with `litcli sessions add`.
     /// </summary>
     private static readonly TimeSpan SessionExpiry = TimeSpan.FromDays(90);
+
+    /// <summary>
+    /// The result view NewSession renders, which is not named after an action - so it is resolved by
+    /// this name at render time, and a typo would surface only on form submit.
+    /// </summary>
+    public const string SessionCreatedView = "SessionCreated";
 
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
@@ -128,7 +135,10 @@ public class UILightningTerminalController(
         var label = $"BTCPay Server {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
         try
         {
-            var session = await client.AddSessionAsync(label, SessionExpiry, cancellationToken);
+            // The one-click path takes every default: admin, litcli's 90 days, the standard mailbox.
+            var session = await client.AddSessionAsync(
+                label, SessionType.TypeMacaroonAdmin, SessionExpiry,
+                LitdClient.DefaultMailboxServer, accountId: null, cancellationToken);
 
             // Terminal has no business knowing which BTCPay instance sent the operator over.
             Response.Headers["Referrer-Policy"] = "no-referrer";
@@ -139,6 +149,85 @@ public class UILightningTerminalController(
             TempData[WellKnownTempData.ErrorMessage] =
                 $"Could not create a pairing session: {(ex is RpcException rpc ? LitdClient.Explain(rpc) : ex.Message)}";
             return RedirectToAction(nameof(Index));
+        }
+    }
+
+    /// <summary>
+    /// The manual counterpart to Connect: choose the session's label, lifetime, type and mailbox rather
+    /// than taking the one-click defaults.
+    /// </summary>
+    [HttpGet("sessions/new")]
+    public async Task<IActionResult> NewSession(CancellationToken cancellationToken)
+    {
+        var model = new NewSessionViewModel();
+        await LoadAccountsAsync(model, cancellationToken);
+        return View(model);
+    }
+
+    [HttpPost("sessions/new")]
+    public async Task<IActionResult> NewSession(NewSessionViewModel model, CancellationToken cancellationToken)
+    {
+        if (!TerminalConnect.CreatableTypes.Contains(model.Type))
+            ModelState.AddModelError(nameof(model.Type), "That session type cannot be created here.");
+
+        // litd would reject this itself, but its error arrives after a round trip and reads like an
+        // internal one; catching it here keeps the operator on the form with their other input intact.
+        if (model.Type is SessionType.TypeMacaroonAccount && string.IsNullOrWhiteSpace(model.AccountId))
+            ModelState.AddModelError(nameof(model.AccountId), "An account session has to name an account.");
+
+        if (!ModelState.IsValid)
+        {
+            await LoadAccountsAsync(model, cancellationToken);
+            return View(model);
+        }
+
+        try
+        {
+            var session = await client.AddSessionAsync(
+                model.Label.Trim(),
+                model.Type,
+                TimeSpan.FromDays(model.ExpiryDays),
+                model.MailboxServer.Trim(),
+                model.AccountId,
+                cancellationToken);
+
+            return View(SessionCreatedView, new SessionCreatedViewModel
+            {
+                Label = session.Label,
+                Type = TerminalConnect.TypeLabel(session.SessionType),
+                Expiry = DateTimeOffset.FromUnixTimeSeconds((long)session.ExpiryTimestampSeconds),
+                MailboxServer = session.MailboxServerAddr,
+                PairingPhrase = session.PairingSecretMnemonic,
+                PairingUrl = TerminalConnect.PairingUrl(session)
+            });
+        }
+        catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
+        {
+            ModelState.AddModelError(string.Empty,
+                ex is RpcException rpc ? LitdClient.Explain(rpc) : ex.Message);
+            await LoadAccountsAsync(model, cancellationToken);
+            return View(model);
+        }
+    }
+
+    /// <summary>
+    /// Fills the account dropdown. Deliberately forgiving: a node that has never used accounts has none,
+    /// and litd refusing to list them is no reason to block an admin or read-only session.
+    /// </summary>
+    private async Task LoadAccountsAsync(NewSessionViewModel model, CancellationToken cancellationToken)
+    {
+        try
+        {
+            model.Accounts = (await client.ListAccountsAsync(cancellationToken))
+                .Select(account => new AccountOption(
+                    account.Id,
+                    string.IsNullOrWhiteSpace(account.Label) ? account.Id : $"{account.Label} ({account.Id})"))
+                .OrderBy(account => account.Description, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
+        {
+            model.Accounts = [];
         }
     }
 

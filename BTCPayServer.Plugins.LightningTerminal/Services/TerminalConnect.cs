@@ -23,6 +23,22 @@ public static class TerminalConnect
         return $"{BaseUrl}#/connect/pair/{Convert.ToBase64String(Encoding.ASCII.GetBytes(payload))}";
     }
 
+    /// <summary>
+    /// The session types this plugin offers, with the labels Terminal uses for them.
+    /// </summary>
+    /// <remarks>
+    /// Custom is missing on purpose: litd's AddSession rejects it outright unless the request carries
+    /// explicit macaroon permissions ("custom macaroon permissions must be specified"), so offering it
+    /// without a permissions editor would only ever produce an error. UI-password and autopilot
+    /// sessions are litd's own to create, not an operator's.
+    /// </remarks>
+    public static IReadOnlyList<SessionType> CreatableTypes { get; } =
+    [
+        SessionType.TypeMacaroonAdmin,
+        SessionType.TypeMacaroonReadonly,
+        SessionType.TypeMacaroonAccount
+    ];
+
     /// <summary>The human-readable session type Terminal expects in the third field of the payload.</summary>
     public static string TypeLabel(SessionType type) => type switch
     {

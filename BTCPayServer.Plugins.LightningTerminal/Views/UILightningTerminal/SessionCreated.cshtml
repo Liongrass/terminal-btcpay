@@ -1,0 +1,54 @@
+@model SessionCreatedViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer["Pairing phrase"]));
+}
+
+<div class="sticky-header">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-action="Index">Lightning Terminal</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Pairing phrase</li>
+        </ol>
+    </nav>
+    <h2 class="my-1">@ViewData["Title"]</h2>
+</div>
+<partial name="_StatusMessage"/>
+
+<div class="row">
+    <div class="col-xl-8 col-xxl-constrain">
+        <div class="widget mb-4">
+            <h5 class="mb-3">@Model.Label</h5>
+            <p class="text-muted">
+                Copy this phrase into Terminal on the web, a mobile wallet, or any other Lightning Node
+                Connect client. It pairs <strong>one</strong> client, once, and this is the only time it
+                is shown.
+            </p>
+
+            <div class="input-group clipboard-button mb-3" data-clipboard="@Model.PairingPhrase"
+                 data-clipboard-confirm="@StringLocalizer["Copied"]">
+                <textarea class="form-control font-monospace" rows="2" readonly>@Model.PairingPhrase</textarea>
+                <button type="button" class="btn btn-outline-secondary only-for-js">
+                    <vc:icon symbol="actions-copy"/>
+                </button>
+            </div>
+
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-muted fw-normal">Type</dt>
+                <dd class="col-sm-9">@Model.Type</dd>
+                <dt class="col-sm-3 text-muted fw-normal">Mailbox server</dt>
+                <dd class="col-sm-9"><code>@Model.MailboxServer</code></dd>
+                <dt class="col-sm-3 text-muted fw-normal">Expires</dt>
+                <dd class="col-sm-9 mb-0">@Model.Expiry.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+            </dl>
+        </div>
+
+        @* Same hash-route link the sessions list uses: the phrase rides in the URL fragment, so it
+           reaches Terminal's page without ever reaching Terminal's server. *@
+        <div class="d-flex gap-2">
+            <a href="@Model.PairingUrl" target="_blank" rel="noreferrer noopener" class="btn btn-primary">
+                Open in Terminal
+            </a>
+            <a asp-action="Index" class="btn btn-secondary">Back to Lightning Terminal</a>
+        </div>
+    </div>
+</div>

@@ -1,4 +1,6 @@
+using System.ComponentModel.DataAnnotations;
 using BTCPayServer.Plugins.LightningTerminal.Services;
+using Litrpc;
 
 namespace BTCPayServer.Plugins.LightningTerminal.ViewModels;
 
@@ -72,4 +74,59 @@ public class TerminalInstructionsViewModel
     /// be uninstalled, or the deployment has no LND for litd to attach to.
     /// </summary>
     public InstallBlocker? Blocker { get; init; }
+}
+
+/// <summary>
+/// The manual "generate a pairing phrase" form. Everything litcli's `sessions add` takes, minus the
+/// flags that need a permissions editor to be useful.
+/// </summary>
+public class NewSessionViewModel
+{
+    [Required]
+    [MaxLength(200)]
+    [Display(Name = "Label")]
+    public string Label { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Days rather than litcli's raw seconds - an expiry is a human decision, and nobody wants to type
+    /// 7776000. Capped at ten years because litd stores it as an absolute timestamp.
+    /// </summary>
+    [Range(1, 3650)]
+    [Display(Name = "Expires in (days)")]
+    public int ExpiryDays { get; set; } = 90;
+
+    [Required]
+    [Display(Name = "Mailbox server")]
+    public string MailboxServer { get; set; } = LitdClient.DefaultMailboxServer;
+
+    [Display(Name = "Type")]
+    public SessionType Type { get; set; } = SessionType.TypeMacaroonAdmin;
+
+    /// <summary>
+    /// Only meaningful for an account session, and required for one - litd rejects the type without a
+    /// parseable id. Empty for every other type.
+    /// </summary>
+    [Display(Name = "Account")]
+    public string? AccountId { get; set; }
+
+    /// <summary>
+    /// The accounts litd reported, for the dropdown. Empty when litd has none, which is the normal
+    /// case for a node that has never used them.
+    /// </summary>
+    public IReadOnlyList<AccountOption> Accounts { get; set; } = [];
+}
+
+/// <param name="Id">litd's account id, which is what the session is actually scoped to.</param>
+/// <param name="Description">Label and id together, since a label alone need not be unique.</param>
+public record AccountOption(string Id, string Description);
+
+/// <summary>A freshly minted session, shown once so the phrase can be copied or used.</summary>
+public class SessionCreatedViewModel
+{
+    public required string Label { get; init; }
+    public required string Type { get; init; }
+    public required DateTimeOffset Expiry { get; init; }
+    public required string MailboxServer { get; init; }
+    public required string PairingPhrase { get; init; }
+    public required string PairingUrl { get; init; }
 }

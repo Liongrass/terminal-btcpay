@@ -46,21 +46,46 @@ public sealed class LitdClient(TerminalOptions options, LitdPaths paths) : IDisp
         return response.State;
     }
 
-    public async Task<Session> AddSessionAsync(string label, TimeSpan expiry, CancellationToken cancellationToken)
+    /// <summary>
+    /// The mailbox litd and the client meet at. litd reaches out to it, which is what removes any need
+    /// to expose litd publicly; the same default litcli uses.
+    /// </summary>
+    public const string DefaultMailboxServer = "mailbox.terminal.lightning.today:443";
+
+    public async Task<Session> AddSessionAsync(
+        string label,
+        SessionType type,
+        TimeSpan expiry,
+        string mailboxServer,
+        string? accountId,
+        CancellationToken cancellationToken)
     {
         var client = new Sessions.SessionsClient(GetChannel());
         var request = new AddSessionRequest
         {
             Label = label,
-            SessionType = SessionType.TypeMacaroonAdmin,
+            SessionType = type,
             ExpiryTimestampSeconds = (ulong)DateTimeOffset.UtcNow.Add(expiry).ToUnixTimeSeconds(),
-            // The same default litcli uses. litd reaches out to this mailbox so that Terminal on the
-            // web can meet it there, which is what removes any need to expose litd publicly.
-            MailboxServerAddr = "mailbox.terminal.lightning.today:443"
+            MailboxServerAddr = mailboxServer,
+            // litd rejects an account session without a parseable id, and ignores the field for every
+            // other type - so it is only ever sent for the type it belongs to.
+            AccountId = type is SessionType.TypeMacaroonAccount ? accountId ?? string.Empty : string.Empty
         };
         var response = await client.AddSessionAsync(
             request, Authenticated(), Deadline(TimeSpan.FromSeconds(30)), cancellationToken);
         return response.Session;
+    }
+
+    /// <summary>
+    /// The accounts litd knows about, for picking one to scope a session to. Equivalent to
+    /// <c>litcli accounts list</c>.
+    /// </summary>
+    public async Task<IReadOnlyList<Account>> ListAccountsAsync(CancellationToken cancellationToken)
+    {
+        var client = new Accounts.AccountsClient(GetChannel());
+        var response = await client.ListAccountsAsync(
+            new ListAccountsRequest(), Authenticated(), Deadline(TimeSpan.FromSeconds(10)), cancellationToken);
+        return response.Accounts;
     }
 
     public async Task<IReadOnlyList<Session>> ListSessionsAsync(CancellationToken cancellationToken)

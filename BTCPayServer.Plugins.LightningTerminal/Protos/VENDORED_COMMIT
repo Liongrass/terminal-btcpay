@@ -4,6 +4,7 @@
 lightninglabs/lightning-terminal  08934deeefe306d99e402c6c683bac3171fff88f
   litrpc/lit-sessions.proto -> Protos/litrpc/lit-sessions.proto
   litrpc/lit-status.proto   -> Protos/litrpc/lit-status.proto
+  litrpc/lit-accounts.proto -> Protos/litrpc/lit-accounts.proto
 
 lightningnetwork/lnd              a912dd69891ff998f7bed7f07b4246e4070b81b7
   lnrpc/stateservice.proto  -> Protos/lnrpc/stateservice.proto

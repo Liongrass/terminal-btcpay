@@ -192,11 +192,15 @@
     </div>
 
     <div class="widget mb-4">
-        <h5 class="mb-3">Terminal sessions</h5>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Terminal sessions</h5>
+            <a asp-action="NewSession" class="btn btn-secondary btn-sm">Generate pairing phrase</a>
+        </div>
         <p class="text-muted">
-            Each <strong>Connect to Terminal</strong> mints a new admin Lightning Node Connect session and
-            opens Terminal on the web with its pairing phrase already filled in. A phrase pairs one browser,
-            once; revoke a session to cut that browser off.
+            <strong>Connect to Terminal</strong> mints an admin session with the usual defaults and opens
+            Terminal on the web with its phrase already filled in. <strong>Generate pairing phrase</strong>
+            lets you choose the label, type, lifetime and mailbox, and hands you the phrase for any LNC
+            client. A phrase pairs one client, once; revoke a session to cut that client off.
         </p>
 
         @if (Model.SessionsError is not null)

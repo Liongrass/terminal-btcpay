@@ -1,0 +1,116 @@
+@using Litrpc
+@model NewSessionViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer["Generate a pairing phrase"]));
+}
+
+<div class="sticky-header">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-action="Index">Lightning Terminal</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Generate a pairing phrase</li>
+        </ol>
+    </nav>
+    <h2 class="my-1">@ViewData["Title"]</h2>
+</div>
+<partial name="_StatusMessage"/>
+
+<div class="row">
+    <div class="col-xl-8 col-xxl-constrain">
+        <p class="text-muted">
+            Creates a Lightning Node Connect session and shows you its pairing phrase, for Terminal on
+            the web or any other LNC client. <strong>Connect to Terminal</strong> on the previous page
+            does the same thing with these defaults and opens Terminal for you.
+        </p>
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="Label" class="form-label"></label>
+                <input asp-for="Label" class="form-control" placeholder="Laptop, phone, bookkeeping…"/>
+                <div class="form-text">Only for your own reference, in the session list.</div>
+                <span asp-validation-for="Label" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Type" class="form-label"></label>
+                <select asp-for="Type" class="form-select" id="SessionType">
+                    @foreach (var type in TerminalConnect.CreatableTypes)
+                    {
+                        <option value="@type">@TerminalConnect.TypeLabel(type)</option>
+                    }
+                </select>
+                <div class="form-text">
+                    <strong>Admin</strong> can move funds and manage channels. <strong>Read-Only</strong>
+                    can only look. <strong>Custodial</strong> is scoped to one account's balance.
+                </div>
+                <span asp-validation-for="Type" class="text-danger"></span>
+            </div>
+
+            @* Only an account session uses this, and litd rejects that type without one. Shown always
+               rather than toggled, so the form still works with JavaScript off; the script below just
+               keeps it out of the way the rest of the time. *@
+            <div class="form-group" id="AccountGroup">
+                <label asp-for="AccountId" class="form-label"></label>
+                @if (Model.Accounts.Count == 0)
+                {
+                    <select class="form-select" disabled>
+                        <option>No accounts on this node</option>
+                    </select>
+                    <input type="hidden" asp-for="AccountId"/>
+                    <div class="form-text">
+                        litd has no accounts, so a Custodial session cannot be created yet. Create one
+                        with <code>litcli accounts create</code> first.
+                    </div>
+                }
+                else
+                {
+                    <select asp-for="AccountId" class="form-select">
+                        <option value="">Select an account&hellip;</option>
+                        @foreach (var account in Model.Accounts)
+                        {
+                            <option value="@account.Id">@account.Description</option>
+                        }
+                    </select>
+                }
+                <span asp-validation-for="AccountId" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="ExpiryDays" class="form-label"></label>
+                <input asp-for="ExpiryDays" type="number" min="1" max="3650" class="form-control"/>
+                <div class="form-text">The session stops working after this. It cannot be extended.</div>
+                <span asp-validation-for="ExpiryDays" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="MailboxServer" class="form-label"></label>
+                <input asp-for="MailboxServer" class="form-control"/>
+                <div class="form-text">
+                    Where your node and the client meet. Leave it alone unless you run your own mailbox.
+                </div>
+                <span asp-validation-for="MailboxServer" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">Generate pairing phrase</button>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section PageFootContent {
+    <partial name="_ValidationScriptsPartial"/>
+    <script>
+        (function () {
+            const type = document.getElementById('SessionType');
+            const account = document.getElementById('AccountGroup');
+            const accountType = '@SessionType.TypeMacaroonAccount';
+            const sync = () => account.hidden = type.value !== accountType;
+            type.addEventListener('change', sync);
+            sync();
+        })();
+    </script>
+}

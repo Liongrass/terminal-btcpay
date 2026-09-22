@@ -47,9 +47,22 @@ public class PluginConventionsTests
     [Theory]
     [InlineData(nameof(UILightningTerminalController.Index))]
     [InlineData(nameof(UILightningTerminalController.Instructions))]
+    [InlineData(nameof(UILightningTerminalController.NewSession))]
     public void EveryViewReturningActionHasAViewUnderItsControllerDirectory(string action)
     {
         var expected = $"{ViewDirectoryFor<UILightningTerminalController>()}{action}.cshtml";
+
+        Assert.Contains(expected, CompiledViews);
+    }
+
+    [Fact]
+    public void ViewsRenderedByNameAlsoExist()
+    {
+        // NewSession renders a result view that is not named after any action, so the convention above
+        // cannot see it. MVC resolves it by string at render time - a typo would throw on form submit
+        // and nowhere earlier.
+        var expected = $"{ViewDirectoryFor<UILightningTerminalController>()}" +
+                       $"{UILightningTerminalController.SessionCreatedView}.cshtml";
 
         Assert.Contains(expected, CompiledViews);
     }
