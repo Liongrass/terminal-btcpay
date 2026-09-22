@@ -105,16 +105,15 @@
         else
         {
             <p class="mb-3">
-                <span class="me-2 btcpay-status btcpay-status--enabled"></span>
-                Found BTCPay Server's bundled LND (<code>@status.Backend.Type</code> at
-                <code>@status.Backend.Server</code>). Lightning Terminal can be installed against it.
+                <span class="me-2 btcpay-status btcpay-status--enabled"></span>LND is installed and running.
             </p>
 
-            <h6 class="mb-2">To install it, paste this into a root shell on your BTCPay Server host</h6>
-            <p class="text-muted">
-                It writes a Compose fragment for <code>litd</code> and enables it. Applying the change
-                restarts your deployment, so this page will be unreachable for a minute or two; reload it
-                when the server is back and <code>litd</code> will be reporting here.
+            <p class="text-muted mb-1">
+                You may now install Lightning Terminal. Copy the code snippet below and run it as root in
+                the command line of your BTCPay Server installation.
+            </p>
+            <p class="text-muted mb-3">
+                Once BTCPay Server has finished restarting itself, you may come back to this page.
             </p>
             <partial name="@LightningTerminalPlugin.HostCommandPartial" model="Model.InstallCommand"/>
         }
