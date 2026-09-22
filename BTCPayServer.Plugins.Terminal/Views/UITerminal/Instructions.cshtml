@@ -1,0 +1,115 @@
+@model TerminalInstructionsViewModel
+@{
+    var (title, lead) = Model.Operation switch
+    {
+        TerminalOperation.Install => (
+            "Install Lightning Terminal",
+            "This writes a Compose fragment that adds litd to your deployment, then regenerates and restarts the stack."),
+        TerminalOperation.Switch => (
+            "Switch to the headless install",
+            "This swaps BTCPay's own Lightning Terminal fragment for this plugin's headless one. litd's data volume is kept, so accounts, sessions and history carry over."),
+        TerminalOperation.Uninstall => (
+            "Uninstall Lightning Terminal",
+            "This removes the litd container and regenerates the stack without it. litd's data is kept."),
+        _ => (
+            "Wipe Lightning Terminal data",
+            "This removes litd and then destroys its data volume. There is no undo.")
+    };
+    ViewData.SetLayoutModel(new LayoutModel("Terminal", StringLocalizer[title]));
+}
+
+<div class="sticky-header">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-action="Index">Lightning Terminal</a></li>
+            <li class="breadcrumb-item active" aria-current="page">@title</li>
+        </ol>
+    </nav>
+    <h2 class="my-1">@title</h2>
+</div>
+<partial name="_StatusMessage"/>
+
+<div class="row">
+    <div class="col-xl-10 col-xxl-constrain">
+        <p>@lead</p>
+
+        @if (Model.Blocker is { } blocker)
+        {
+            <div class="alert alert-warning">@blocker</div>
+        }
+
+        @if (Model.Operation == TerminalOperation.Wipe)
+        {
+            <div class="alert alert-danger">
+                <strong>This is irreversible.</strong>
+                It destroys litd's macaroon, every Lightning Node Connect session, and all Loop, Pool and
+                Faraday history. LND's own data - your channels, funds and channel backups - lives in a
+                separate volume and is not touched.
+            </div>
+        }
+
+        <h4 class="mt-4 mb-2">Why you have to run this yourself</h4>
+        <p class="text-muted">
+            Adding or removing a service rebuilds your Docker Compose stack, which restarts BTCPay Server
+            itself. Since BTCPay Server 2.4.4 a plugin's only channel to the host is
+            <code>btcpay-host</code>, whose command list is fixed by your deployment and does not include
+            fragment management - so this one step has to be run on the host. Everything else this plugin
+            does needs no host access at all.
+        </p>
+
+        <h4 class="mt-4 mb-2">Run this in a root shell on your BTCPay Server host</h4>
+        <p class="text-muted">
+            Connect over SSH as <code>root</code> (or use <code>sudo -i</code>) and paste the whole block.
+            <code>btcpay-fragments</code> applies the change immediately and brings the stack back up, so
+            this page will become unreachable for a minute or two while BTCPay Server restarts.
+        </p>
+
+        <div class="d-flex justify-content-end mb-2">
+            <button type="button" class="btn btn-secondary btn-sm only-for-js clipboard-button"
+                    data-clipboard="@Model.Command"
+                    data-clipboard-confirm="@StringLocalizer["Copied"]">
+                <vc:icon symbol="actions-copy"/>
+                <span class="ms-1">Copy</span>
+            </button>
+        </div>
+        <pre class="p-3 rounded border bg-tile text-break" style="white-space: pre-wrap;"><code>@Model.Command</code></pre>
+
+        @if (!Model.DockerDeployment)
+        {
+            <div class="alert alert-warning">
+                This BTCPay Server does not look like a btcpayserver-docker deployment, so these commands
+                probably will not work as written. They are shown so you can adapt them to how your
+                deployment is actually built.
+            </div>
+        }
+
+        @if (Model.Operation == TerminalOperation.Switch)
+        {
+            <div class="alert alert-info">
+                This runs <code>btcpay-fragments</code> twice - once to drop the old fragment, once to add
+                the new one - because each call rebuilds and restarts the stack as it goes. litd is down
+                between the two, and your deployment restarts twice.
+            </div>
+        }
+
+        @if (Model.Operation is TerminalOperation.Install or TerminalOperation.Switch)
+        {
+            <h4 class="mt-4 mb-2">What the fragment does</h4>
+            <p class="text-muted">
+                It is btcpayserver-docker's own <code>@TerminalOptions.UpstreamFragmentName</code> with the
+                web UI turned off. With <code>--disableui</code> there is no UI password to generate, store
+                or rotate, and no need to publish litd's <code>/lit/</code> and gRPC endpoints on your public
+                BTCPay hostname - so this fragment does not add those routes. litd's data directory is
+                mounted read-only into the BTCPay Server container instead, which is how this plugin reads
+                its status, mints pairing sessions and fetches its logs.
+            </p>
+            <p class="text-muted">
+                The file is named <code>*.custom.yml</code>, which btcpayserver-docker keeps across updates.
+            </p>
+        }
+
+        <div class="mt-4">
+            <a asp-action="Index" class="btn btn-primary">Back to Lightning Terminal</a>
+        </div>
+    </div>
+</div>

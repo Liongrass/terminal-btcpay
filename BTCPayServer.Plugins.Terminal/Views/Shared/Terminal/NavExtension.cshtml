@@ -1,0 +1,12 @@
+@using BTCPayServer.Client
+@model BTCPayServer.Components.MainNav.MainNavViewModel
+
+@* Server-wide, not store-scoped: litd is a property of the deployment, so this entry shows on every
+   page of the Plugins menu rather than only inside a store. The permission attribute is what keeps it
+   invisible to everyone but a server administrator - the controller enforces the same policy. *@
+<li class="nav-item" permission="@Policies.CanModifyServerSettings">
+    <a layout-menu-item="Terminal" asp-area="" asp-controller="UITerminal" asp-action="Index" id="Nav-Terminal">
+        <vc:icon symbol="logo-lightningterminal"/>
+        <span text-translate="true">Lightning Terminal</span>
+    </a>
+</li>

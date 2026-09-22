@@ -1,0 +1,32 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      # Compiles the Razor views as well as the C#, so a broken view fails here rather than on
+      # somebody's server.
+      - run: dotnet build --configuration Release
+
+      - run: dotnet test --configuration Release --no-build
+
+      - run: ./scripts/build-plugin.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BTCPayServer.Plugins.Terminal.btcpay
+          path: packaged/**/*.btcpay

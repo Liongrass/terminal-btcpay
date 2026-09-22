@@ -1,0 +1,64 @@
+@model TerminalConnectViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel("Terminal", StringLocalizer["Connect to Terminal"]));
+}
+
+<div class="sticky-header">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-action="Index">Lightning Terminal</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Connect</li>
+        </ol>
+    </nav>
+    <h2 class="my-1">@ViewData["Title"]</h2>
+</div>
+<partial name="_StatusMessage"/>
+
+<div class="row">
+    <div class="col-xl-10 col-xxl-constrain">
+        <div class="widget mb-4">
+            <h5 class="mb-3">Your node is ready to pair</h5>
+            <p class="text-muted">
+                Opening Terminal below hands it this pairing phrase, and the two connect through the
+                Lightning Node Connect mailbox - your node stays unreachable from the public internet.
+                The phrase pairs <strong>one</strong> browser: use it here, or copy it somewhere else, not both.
+            </p>
+            @* target=_blank because the phrase lives in the URL fragment, so it is never sent to any
+               server - Terminal reads it in the browser. rel=noreferrer keeps it out of a Referer header. *@
+            <a href="@Model.PairingUrl" target="_blank" rel="noreferrer noopener" class="btn btn-primary btn-lg">
+                Open Terminal and pair
+            </a>
+        </div>
+
+        <div class="widget mb-4">
+            <h5 class="mb-3">Or pair by hand</h5>
+            <p class="text-muted">
+                Paste this phrase into Terminal, or into any other Lightning Node Connect client such as a
+                mobile wallet or your own application.
+            </p>
+            <label class="form-label">Pairing phrase</label>
+            <div class="input-group clipboard-button mb-3" data-clipboard="@Model.PairingPhrase"
+                 data-clipboard-confirm="@StringLocalizer["Copied"]">
+                <textarea class="form-control font-monospace" rows="2" readonly>@Model.PairingPhrase</textarea>
+                <button type="button" class="btn btn-outline-secondary only-for-js">
+                    <vc:icon symbol="actions-copy"/>
+                </button>
+            </div>
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-muted fw-normal">Mailbox server</dt>
+                <dd class="col-sm-9"><code>@Model.MailboxServerAddress</code></dd>
+                <dt class="col-sm-3 text-muted fw-normal">Session label</dt>
+                <dd class="col-sm-9">@Model.Label</dd>
+                <dt class="col-sm-3 text-muted fw-normal">Expires</dt>
+                <dd class="col-sm-9 mb-0">@Model.Expiry.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+            </dl>
+        </div>
+
+        <div class="alert alert-warning">
+            This is an <strong>admin</strong> session: whoever holds the phrase can move funds and manage
+            channels. If it goes astray, revoke it from the Lightning Terminal page.
+        </div>
+
+        <a asp-action="Index" class="btn btn-secondary">Back to Lightning Terminal</a>
+    </div>
+</div>

@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Plugin build settings -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <AddRazorSupportForMvc>true</AddRazorSupportForMvc>
+
+    <!-- Enable XML documentation for IntelliSense -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Plugin Metadata -->
+    <Product>Lightning Terminal</Product>
+    <Description>Installs and manages Lightning Terminal (litd) on a BTCPay Server Docker deployment backed by the bundled LND.</Description>
+    <Version>0.1.0</Version>
+    <Authors>Lightning Labs</Authors>
+    <Company>Lightning Labs</Company>
+    <PackageProjectUrl>https://github.com/lightninglabs/terminal-btcpay</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/lightninglabs/terminal-btcpay</RepositoryUrl>
+    <PackageTags>btcpay;lightning-terminal;litd;lnd;lightning;bitcoin</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="BTCPayServer.Plugins.Terminal.UnitTests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BTCPay Server dependency (submodule) - excluded from plugin output, the host provides it -->
+    <ProjectReference Include="..\btcpayserver\BTCPayServer\BTCPayServer.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      gRPC client for litd. Protos/ is vendored (not a submodule) from
+      lightninglabs/lightning-terminal and lightningnetwork/lnd - see
+      Protos/VENDORED_COMMIT for the exact source commits and
+      scripts/check-proto-drift.sh for the CI staleness check.
+    -->
+    <PackageReference Include="Grpc.Tools" Version="2.82.0" PrivateAssets="All" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />
+    <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+    <Protobuf Include="Protos\**\*.proto" GrpcServices="Client" ProtoRoot="Protos" />
+  </ItemGroup>
+</Project>

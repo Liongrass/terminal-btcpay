@@ -1,0 +1,261 @@
+@model TerminalIndexViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel("Terminal", StringLocalizer["Lightning Terminal"]));
+
+    var status = Model.Status;
+    var (dot, headline) = !status.Installed
+        ? status.UpstreamOnly
+            ? ("pending", "Installed outside this plugin")
+            : ("disabled", "Not installed")
+        : status.Healthy
+            ? ("enabled", "Running")
+            : status.Running
+                ? ("pending", "Running with errors")
+                : ("disabled", "Installed, but not running");
+}
+
+<div class="sticky-header d-flex align-items-center justify-content-between">
+    <h2 class="my-1">@ViewData["Title"]</h2>
+    @if (status.Installed)
+    {
+        <div class="d-flex gap-2">
+            @if (status.Running)
+            {
+                <form method="post" asp-action="Connect">
+                    <button type="submit" class="btn btn-primary">Connect to Terminal</button>
+                </form>
+            }
+            <a asp-action="Index" class="btn btn-secondary">Refresh</a>
+        </div>
+    }
+</div>
+<partial name="_StatusMessage"/>
+
+@if (!Model.DockerDeployment)
+{
+    <div class="alert alert-warning mb-4">
+        This BTCPay Server is not running from a
+        <a href="https://github.com/btcpayserver/btcpayserver-docker" target="_blank" rel="noreferrer noopener">btcpayserver-docker</a>
+        deployment. Lightning Terminal is installed as a container alongside BTCPay's own LND, so this
+        plugin has nothing to manage here and the instructions below will not apply.
+    </div>
+}
+
+<div class="widget mb-4">
+    <div class="d-flex align-items-center justify-content-between">
+        <h5 class="mb-0">
+            <span class="me-2 btcpay-status btcpay-status--@dot"></span>@headline
+        </h5>
+        @if (status.LndState is not null)
+        {
+            <span class="text-muted">LND: <code>@status.LndState</code></span>
+        }
+    </div>
+
+    @if (status.Error is not null)
+    {
+        <div class="alert alert-danger mt-3 mb-0">@status.Error</div>
+    }
+
+    @if (!status.Installed)
+    {
+        <hr/>
+        @if (!status.UpstreamOnly)
+        {
+            <p class="text-muted">
+                Lightning Terminal (<code>litd</code>) adds Loop, Pool and Faraday to your node and lets you
+                manage channel liquidity from
+                <a href="@TerminalConnect.BaseUrl" target="_blank" rel="noreferrer noopener">Terminal on the web</a>.
+                Installing this plugin does not install <code>litd</code> - that is a separate, deliberate step
+                that rebuilds and restarts your deployment.
+            </p>
+        }
+
+        @if (status.UpstreamOnly)
+        {
+            <div class="alert alert-info">
+                <strong>litd is already running here, installed by BTCPay's own fragment.</strong>
+                <span class="d-block mt-1">
+                    That version serves litd's web UI at
+                    <a href="@status.UpstreamUrl" target="_blank" rel="noreferrer noopener">@status.UpstreamUrl</a>,
+                    behind the UI password in <code>secrets/lit_password</code> on your host. It does not
+                    expose litd to this plugin, so nothing below can report on it.
+                </span>
+            </div>
+            <p class="text-muted">
+                Switching to this plugin's fragment keeps litd's data - accounts, sessions and history all
+                carry over - and turns the web UI off. In exchange there is no UI password to protect, and
+                litd's <code>/lit/</code> and gRPC endpoints stop being served on your public BTCPay
+                hostname; you manage the node from here and from Terminal on the web instead.
+            </p>
+            <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Switch" class="btn btn-primary">
+                Switch to the headless install
+            </a>
+        }
+        else if (status.Backend.Blocker is { } blocker)
+        {
+            <div class="alert alert-danger mb-0">
+                <strong>Lightning Terminal cannot be installed on this deployment.</strong>
+                <span class="d-block mt-1">@blocker</span>
+            </div>
+        }
+        else
+        {
+            <p class="mb-3">
+                <span class="me-2 btcpay-status btcpay-status--enabled"></span>
+                Found BTCPay Server's bundled LND (<code>@status.Backend.Type</code> at
+                <code>@status.Backend.Server</code>). Lightning Terminal can be installed against it.
+            </p>
+            <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Install" class="btn btn-primary">
+                Install Lightning Terminal
+            </a>
+        }
+    }
+</div>
+
+@if (status.Installed)
+{
+    <div class="widget mb-4">
+        <h5 class="mb-3">Subsystems</h5>
+        @if (status.SubServers.Count == 0)
+        {
+            <p class="text-muted mb-0">
+                litd has not reported on its subsystems. That is expected while it is down or still starting.
+            </p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Subsystem</th>
+                        <th>Status</th>
+                        <th>Detail</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var sub in status.SubServers)
+                    {
+                        var (subDot, subLabel) = sub switch
+                        {
+                            { HasError: true } => ("disabled", "Error"),
+                            { Disabled: true } => ("disabled", "Disabled"),
+                            { Running: true } => ("enabled", "Running"),
+                            _ => ("pending", "Not running")
+                        };
+                        <tr>
+                            <td><code>@sub.Name</code></td>
+                            <td><span class="me-2 btcpay-status btcpay-status--@subDot"></span>@subLabel</td>
+                            <td class="text-break">
+                                @if (sub.HasError)
+                                {
+                                    <span class="text-danger">@sub.Error</span>
+                                }
+                                else if (!string.IsNullOrEmpty(sub.CustomStatus))
+                                {
+                                    <span class="text-muted">@sub.CustomStatus</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">&mdash;</span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="widget mb-4">
+        <h5 class="mb-3">Terminal sessions</h5>
+        <p class="text-muted">
+            Each <strong>Connect to Terminal</strong> mints a new admin Lightning Node Connect session and
+            opens Terminal on the web with its pairing phrase already filled in. A phrase pairs one browser,
+            once; revoke a session to cut that browser off.
+        </p>
+
+        @if (Model.SessionsError is not null)
+        {
+            <div class="alert alert-warning">@Model.SessionsError</div>
+        }
+        else if (Model.Sessions.Count == 0)
+        {
+            <p class="text-muted mb-0">No sessions yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Label</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Expires</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var session in Model.Sessions)
+                    {
+                        <tr>
+                            <td class="text-break">@session.Label</td>
+                            <td>@session.Type</td>
+                            <td>@session.State</td>
+                            <td>@session.Expiry.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            <td class="text-end text-nowrap">
+                                @if (session.PairingUrl is { } pairingUrl)
+                                {
+                                    <a href="@pairingUrl" target="_blank" rel="noreferrer noopener"
+                                       class="btn btn-link btn-sm p-0 me-3">Open in Terminal</a>
+                                }
+                                @if (session.Active)
+                                {
+                                    <form method="post" asp-action="RevokeSession" class="d-inline">
+                                        <input type="hidden" name="localPublicKey" value="@session.LocalPublicKey"/>
+                                        <button type="submit" class="btn btn-link btn-sm p-0 text-danger"
+                                                onclick="return confirm('Revoke this session? Any browser paired with it loses access immediately.');">
+                                            Revoke
+                                        </button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="widget">
+        <h5 class="mb-3">Maintenance</h5>
+        <div class="d-flex flex-wrap gap-2">
+            @if (status.LogAvailable)
+            {
+                <a asp-action="Logs" class="btn btn-secondary">Download litd logs</a>
+            }
+            else
+            {
+                <button type="button" class="btn btn-secondary" disabled
+                        title="litd has not written a log file yet">
+                    Download litd logs
+                </button>
+            }
+            <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Uninstall" class="btn btn-outline-secondary">
+                Uninstall litd
+            </a>
+            <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Wipe" class="btn btn-outline-danger">
+                Wipe litd data
+            </a>
+        </div>
+        <p class="text-muted small mb-0 mt-3">
+            Uninstalling removes the <code>litd</code> container but keeps its data, so re-installing later
+            picks up right where you left off. Wiping destroys that data permanently. Neither touches LND
+            itself, its channels or its funds.
+        </p>
+    </div>
+}
