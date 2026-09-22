@@ -119,6 +119,19 @@
             </p>
             <partial name="@LightningTerminalPlugin.HostCommandPartial" model="Model.InstallCommand"/>
         }
+
+        @* Uninstalling keeps litd's data volume, and once /lit is unmounted nothing here can tell
+           whether one is still lying around - so this is offered quietly rather than asserted. Without
+           it, Wipe would be unreachable at exactly the point the uninstall page says to use it, since
+           the Maintenance widget only renders while litd is installed. Not shown for an upstream
+           install, where wiping would take out a litd that is currently running. *@
+        @if (status.NotFound)
+        {
+            <p class="text-muted small mb-0 mt-4">
+                Uninstalling litd keeps its data. If you have leftovers from an earlier install, you can
+                <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Wipe">remove them for good</a>.
+            </p>
+        }
     }
 </div>
 
