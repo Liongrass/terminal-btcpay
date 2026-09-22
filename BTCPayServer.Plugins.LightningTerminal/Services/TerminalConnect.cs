@@ -1,7 +1,7 @@
 using System.Text;
 using Litrpc;
 
-namespace BTCPayServer.Plugins.Terminal.Services;
+namespace BTCPayServer.Plugins.LightningTerminal.Services;
 
 /// <summary>
 /// Builds the Terminal-on-the-web link that pairs a browser with this node over Lightning Node

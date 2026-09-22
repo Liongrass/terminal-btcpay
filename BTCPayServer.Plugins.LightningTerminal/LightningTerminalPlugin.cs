@@ -1,13 +1,13 @@
 using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Abstractions.Models;
-using BTCPayServer.Plugins.Terminal.Services;
+using BTCPayServer.Plugins.LightningTerminal.Services;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BTCPayServer.Plugins.Terminal;
+namespace BTCPayServer.Plugins.LightningTerminal;
 
-public class TerminalPlugin : BaseBTCPayServerPlugin
+public class LightningTerminalPlugin : BaseBTCPayServerPlugin
 {
-    public override string Identifier => "BTCPayServer.Plugins.Terminal";
+    public override string Identifier => "BTCPayServer.Plugins.LightningTerminal";
     public override string Name => "Lightning Terminal";
 
     public override string Description =>
@@ -32,7 +32,7 @@ public class TerminalPlugin : BaseBTCPayServerPlugin
 
         // header-nav is the "Plugins" section of the main navigation; the partial hides itself from
         // anyone without CanModifyServerSettings.
-        services.AddUIExtension("header-nav", "Terminal/NavExtension");
+        services.AddUIExtension("header-nav", "LightningTerminal/NavExtension");
 
         base.Execute(services);
     }

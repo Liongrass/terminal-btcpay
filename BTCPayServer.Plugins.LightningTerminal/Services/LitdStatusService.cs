@@ -4,7 +4,7 @@ using Litrpc;
 using Lnrpc;
 using Microsoft.Extensions.Options;
 
-namespace BTCPayServer.Plugins.Terminal.Services;
+namespace BTCPayServer.Plugins.LightningTerminal.Services;
 
 /// <param name="Name">litd's own name for the sub-server, e.g. <c>lnd</c>, <c>loop</c>, <c>faraday</c>.</param>
 /// <param name="Disabled">Shipped with litd but switched off for this deployment.</param>

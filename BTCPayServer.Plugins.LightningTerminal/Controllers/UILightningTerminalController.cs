@@ -2,13 +2,13 @@ using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Abstractions.Extensions;
 using BTCPayServer.Client;
 using BTCPayServer.Configuration;
-using BTCPayServer.Plugins.Terminal.Services;
-using BTCPayServer.Plugins.Terminal.ViewModels;
+using BTCPayServer.Plugins.LightningTerminal.Services;
+using BTCPayServer.Plugins.LightningTerminal.ViewModels;
 using Grpc.Core;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace BTCPayServer.Plugins.Terminal.Controllers;
+namespace BTCPayServer.Plugins.LightningTerminal.Controllers;
 
 /// <summary>
 /// Server-administrator UI for Lightning Terminal: whether litd is installed and healthy, how to
@@ -22,7 +22,7 @@ namespace BTCPayServer.Plugins.Terminal.Controllers;
 [Authorize(AuthenticationSchemes = AuthenticationSchemes.Cookie, Policy = Policies.CanModifyServerSettings)]
 [AutoValidateAntiforgeryToken]
 [Route("server/plugins/lightning-terminal")]
-public class UITerminalController(
+public class UILightningTerminalController(
     LitdStatusService statusService,
     LitdClient client,
     LitdPaths paths,

@@ -16,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BTCPayServer.Plugins.Terminal\BTCPayServer.Plugins.Terminal.csproj" />
+    <ProjectReference Include="..\BTCPayServer.Plugins.LightningTerminal\BTCPayServer.Plugins.LightningTerminal.csproj" />
   </ItemGroup>
 
 </Project>

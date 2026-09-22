@@ -1,7 +1,7 @@
 using BTCPayServer.Configuration;
 using Microsoft.Extensions.Options;
 
-namespace BTCPayServer.Plugins.Terminal.Services;
+namespace BTCPayServer.Plugins.LightningTerminal.Services;
 
 public enum LightningBackendKind
 {

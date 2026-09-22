@@ -1,1 +1,1 @@
-PROJECT="BTCPayServer.Plugins.Terminal"
+PROJECT="BTCPayServer.Plugins.LightningTerminal"

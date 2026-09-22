@@ -1,8 +1,8 @@
-using BTCPayServer.Plugins.Terminal.Services;
+using BTCPayServer.Plugins.LightningTerminal.Services;
 using Xunit;
 using YamlDotNet.Serialization;
 
-namespace BTCPayServer.Plugins.Terminal.UnitTests;
+namespace BTCPayServer.Plugins.LightningTerminal.UnitTests;
 
 /// <summary>
 /// Guards the Compose fragment an operator is asked to paste onto their host. A mistake here does not

@@ -1,4 +1,4 @@
-namespace BTCPayServer.Plugins.Terminal.Services;
+namespace BTCPayServer.Plugins.LightningTerminal.Services;
 
 /// <summary>
 /// Resolves the files inside litd's data directory that this plugin reads: the TLS certificate and

@@ -1,4 +1,4 @@
-namespace BTCPayServer.Plugins.Terminal.Services;
+namespace BTCPayServer.Plugins.LightningTerminal.Services;
 
 /// <summary>
 /// Builds the Docker Compose fragment that adds litd to a btcpayserver-docker deployment, and the

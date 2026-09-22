@@ -1,7 +1,7 @@
 using BTCPayServer.Configuration;
 using Microsoft.Extensions.Configuration;
 
-namespace BTCPayServer.Plugins.Terminal.Services;
+namespace BTCPayServer.Plugins.LightningTerminal.Services;
 
 /// <summary>
 /// Where this plugin expects to find litd, and what it calls the pieces it asks the operator to

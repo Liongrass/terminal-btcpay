@@ -1,7 +1,7 @@
-using BTCPayServer.Plugins.Terminal.Services;
+using BTCPayServer.Plugins.LightningTerminal.Services;
 using Xunit;
 
-namespace BTCPayServer.Plugins.Terminal.UnitTests;
+namespace BTCPayServer.Plugins.LightningTerminal.UnitTests;
 
 /// <summary>
 /// These paths decide whether the plugin reports litd as installed, and whether it can authenticate to

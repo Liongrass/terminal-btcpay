@@ -28,5 +28,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: BTCPayServer.Plugins.Terminal.btcpay
+          name: BTCPayServer.Plugins.LightningTerminal.btcpay
           path: packaged/**/*.btcpay

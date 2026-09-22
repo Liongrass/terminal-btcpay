@@ -1,9 +1,9 @@
 using System.Text;
-using BTCPayServer.Plugins.Terminal.Services;
+using BTCPayServer.Plugins.LightningTerminal.Services;
 using Litrpc;
 using Xunit;
 
-namespace BTCPayServer.Plugins.Terminal.UnitTests;
+namespace BTCPayServer.Plugins.LightningTerminal.UnitTests;
 
 /// <summary>
 /// Pins the pairing-link encoding to litd's own. Terminal parses this strictly, and it is produced in

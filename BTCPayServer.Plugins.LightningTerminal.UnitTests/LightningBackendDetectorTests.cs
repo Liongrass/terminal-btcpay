@@ -1,7 +1,7 @@
-using BTCPayServer.Plugins.Terminal.Services;
+using BTCPayServer.Plugins.LightningTerminal.Services;
 using Xunit;
 
-namespace BTCPayServer.Plugins.Terminal.UnitTests;
+namespace BTCPayServer.Plugins.LightningTerminal.UnitTests;
 
 /// <summary>
 /// The install gate. litd is only ever attached to btcpayserver-docker's own LND, so anything else

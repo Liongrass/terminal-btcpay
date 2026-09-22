@@ -4,7 +4,7 @@ using Grpc.Net.Client;
 using Litrpc;
 using Lnrpc;
 
-namespace BTCPayServer.Plugins.Terminal.Services;
+namespace BTCPayServer.Plugins.LightningTerminal.Services;
 
 /// <summary>Thrown when litd's data directory is present but litd has not yet produced what a call needs.</summary>
 public class LitdNotReadyException(string message) : Exception(message);

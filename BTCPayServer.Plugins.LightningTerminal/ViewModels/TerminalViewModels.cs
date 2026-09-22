@@ -1,6 +1,6 @@
-using BTCPayServer.Plugins.Terminal.Services;
+using BTCPayServer.Plugins.LightningTerminal.Services;
 
-namespace BTCPayServer.Plugins.Terminal.ViewModels;
+namespace BTCPayServer.Plugins.LightningTerminal.ViewModels;
 
 public class TerminalIndexViewModel
 {

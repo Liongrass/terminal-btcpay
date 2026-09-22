@@ -12,6 +12,15 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
+    <!--
+      BTCPay reads a plugin's version out of AssemblyInformationalVersion (see
+      BaseBTCPayServerPlugin.Version) with Version.TryParse. The SDK appends "+<commit sha>" to that
+      attribute whenever it builds from a git checkout, which makes the parse fail and silently falls
+      back to AssemblyVersion - so the same source would advertise 0.1.0 from a tarball and 0.1.0.0
+      from a clone, and package into differently named directories. Keep the attribute parseable.
+    -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+
     <!-- Plugin Metadata -->
     <Product>Lightning Terminal</Product>
     <Description>Installs and manages Lightning Terminal (litd) on a BTCPay Server Docker deployment backed by the bundled LND.</Description>
@@ -24,7 +33,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="BTCPayServer.Plugins.Terminal.UnitTests" />
+    <InternalsVisibleTo Include="BTCPayServer.Plugins.LightningTerminal.UnitTests" />
   </ItemGroup>
 
   <ItemGroup>

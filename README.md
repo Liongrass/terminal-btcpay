@@ -80,7 +80,7 @@ cd terminal-btcpay
 ./scripts/build-plugin.sh
 ```
 
-Then upload `packaged/BTCPayServer.Plugins.Terminal/<version>/BTCPayServer.Plugins.Terminal.btcpay`
+Then upload `packaged/BTCPayServer.Plugins.LightningTerminal/<version>/BTCPayServer.Plugins.LightningTerminal.btcpay`
 via **Server Settings → Plugins → Upload**, or drop it into your BTCPay data directory's `Plugins/`
 folder, and restart BTCPay Server.
 

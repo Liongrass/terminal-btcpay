@@ -7,6 +7,6 @@
     <Project Path="btcpayserver/BTCPayServer.Rating/BTCPayServer.Rating.csproj" />
     <Project Path="btcpayserver/BTCPayServer/BTCPayServer.csproj" />
   </Folder>
-  <Project Path="BTCPayServer.Plugins.Terminal.UnitTests/BTCPayServer.Plugins.Terminal.UnitTests.csproj" />
-  <Project Path="BTCPayServer.Plugins.Terminal/BTCPayServer.Plugins.Terminal.csproj" />
+  <Project Path="BTCPayServer.Plugins.LightningTerminal.UnitTests/BTCPayServer.Plugins.LightningTerminal.UnitTests.csproj" />
+  <Project Path="BTCPayServer.Plugins.LightningTerminal/BTCPayServer.Plugins.LightningTerminal.csproj" />
 </Solution>

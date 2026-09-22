@@ -3,7 +3,7 @@ name: Proto drift check
 on:
   pull_request:
     paths:
-      - 'BTCPayServer.Plugins.Terminal/Protos/**'
+      - 'BTCPayServer.Plugins.LightningTerminal/Protos/**'
       - 'scripts/check-proto-drift.sh'
   schedule:
     # Weekly, so drift surfaces on its own rather than only when someone happens to touch Protos/.
