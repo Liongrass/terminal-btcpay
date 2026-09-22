@@ -10,8 +10,22 @@ namespace BTCPayServer.Plugins.LightningTerminal.UnitTests;
 /// </summary>
 public class LitdFragmentTests
 {
-    private static readonly Dictionary<string, object> Fragment =
-        new DeserializerBuilder().Build().Deserialize<Dictionary<string, object>>(LitdFragment.Yaml);
+    /// <summary>A fragment as generated for a mainnet deployment, which is the default shape.</summary>
+    private static readonly LitdFragment Mainnet = FragmentFor("mainnet");
+
+    private static readonly Dictionary<string, object> Fragment = Parse(Mainnet.Yaml);
+
+    internal static LitdFragment FragmentFor(string network) =>
+        new(new TerminalOptions(
+            "/lit", TerminalOptions.DefaultRpcHost, TerminalOptions.DefaultRpcPort, network));
+
+    private static Dictionary<string, object> Parse(string yaml) =>
+        new DeserializerBuilder().Build().Deserialize<Dictionary<string, object>>(yaml);
+
+    internal static List<string> ArgumentsFor(string network) =>
+        ((List<object>)((Dictionary<object, object>)((Dictionary<object, object>)
+            Parse(FragmentFor(network).Yaml)["services"])[TerminalOptions.DefaultRpcHost])["command"])
+        .Cast<string>().ToList();
 
     private static Dictionary<object, object> Service(string name) =>
         (Dictionary<object, object>)((Dictionary<object, object>)Fragment["services"])[name];
@@ -48,6 +62,41 @@ public class LitdFragmentTests
         Assert.Contains($"{TerminalOptions.DefaultRpcPort}", Strings(service, "expose").Select(port => port.ToString()));
     }
 
+    [Theory]
+    [InlineData("regtest")]
+    public void AutopilotIsDisabledWhereLightningLabsRunsNoAutopilotServer(string network)
+    {
+        // litd resolves the Autopilot address from --network and, for anything but mainnet/testnet,
+        // returns "no autopilot server address specified" - which aborts startup. litd does not come up
+        // at all, so this is the difference between a working regtest deployment and a dead one.
+        Assert.Contains("--autopilot.disable", ArgumentsFor(network));
+    }
+
+    [Theory]
+    [InlineData("mainnet")]
+    [InlineData("testnet")]
+    public void AutopilotIsLeftOnWhereItWorks(string network)
+    {
+        // Disabling it everywhere would be the safe-looking choice and would quietly cost mainnet
+        // operators the Autopilot sessions Terminal offers.
+        Assert.DoesNotContain("--autopilot.disable", ArgumentsFor(network));
+    }
+
+    [Theory]
+    [InlineData("mainnet", true)]
+    [InlineData("testnet", true)]
+    [InlineData("regtest", false)]
+    [InlineData("simnet", false)]
+    [InlineData("signet", false)]
+    [InlineData("testnet4", false)]
+    public void AutopilotAvailabilityMirrorsLitdsOwnSwitch(string network, bool available)
+    {
+        // btcpay-setup.sh only accepts mainnet, testnet and regtest, so signet, testnet4 and simnet
+        // cannot reach us through btcpayserver-docker today. The rule is still written as litd's own,
+        // so it stays right if BTCPay ever widens that list - litd would reject those the same way.
+        Assert.Equal(available, LitdFragment.AutopilotAvailableOn(network));
+    }
+
     [Fact]
     public void NoPlaintextListenerIsOpened()
     {
@@ -66,7 +115,7 @@ public class LitdFragmentTests
 
         Assert.DoesNotContain(Strings(service, "volumes").Cast<string>(), mount => mount.StartsWith("bitcoin_datadir:"));
         Assert.DoesNotContain("bitcoind", Strings(service, "links").Cast<string>());
-        Assert.DoesNotContain("faraday", LitdFragment.Yaml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("faraday", Mainnet.Yaml, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -74,13 +123,13 @@ public class LitdFragmentTests
     {
         // litd has defaulted to SQLite since v0.17 and only prompts when it finds legacy kvdb files,
         // so a fresh install never sees the prompt this used to suppress.
-        Assert.DoesNotContain("LIT_AUTO_MIGRATE_TO_SQL", LitdFragment.Yaml);
+        Assert.DoesNotContain("LIT_AUTO_MIGRATE_TO_SQL", Mainnet.Yaml);
     }
 
     [Fact]
     public void OnlyTheGeneratedByLineSurvivesAsAComment()
     {
-        var comments = LitdFragment.Yaml
+        var comments = Mainnet.Yaml
             .Split('\n')
             .Where(line => line.TrimStart().StartsWith('#'))
             .ToArray();
@@ -95,7 +144,7 @@ public class LitdFragmentTests
         // endpoints on the public BTCPay hostname. Headless litd needs none of that reachable.
         Assert.False(Fragment.ContainsKey("required-routes"));
         Assert.False(Fragment.ContainsKey("optional-routes"));
-        Assert.DoesNotContain("BTCPAY_EXTERNALSERVICES", LitdFragment.Yaml);
+        Assert.DoesNotContain("BTCPAY_EXTERNALSERVICES", Mainnet.Yaml);
     }
 
     [Fact]
@@ -128,8 +177,8 @@ public class LitdFragmentTests
     {
         // ${NBITCOIN_NETWORK} must reach the file unexpanded, so Compose resolves it from the
         // deployment's .env. The install snippet therefore has to use a *quoted* heredoc.
-        Assert.Contains("--network=${NBITCOIN_NETWORK}", LitdFragment.Yaml);
-        Assert.Contains("<<'LITD_FRAGMENT'", LitdFragment.InstallCommand);
+        Assert.Contains("--network=${NBITCOIN_NETWORK}", Mainnet.Yaml);
+        Assert.Contains("<<'LITD_FRAGMENT'", Mainnet.InstallCommand);
     }
 
     [Fact]
@@ -139,10 +188,10 @@ public class LitdFragmentTests
         Assert.Equal($"{LitdFragment.FragmentDirectory}/{LitdFragment.FileName}", LitdFragment.RelativePath);
         // The snippet cds into the directory and then redirects, rather than carrying the whole path on
         // the redirect line - so assert on both halves, since neither appears as RelativePath any more.
-        Assert.Contains($"cd \"$BTCPAY_BASE_DIRECTORY/{LitdFragment.FragmentDirectory}\"", LitdFragment.InstallCommand);
-        Assert.Contains($"cat > {LitdFragment.FileName} <<", LitdFragment.InstallCommand);
-        Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", LitdFragment.InstallCommand);
-        Assert.Contains(LitdFragment.Yaml, LitdFragment.InstallCommand);
+        Assert.Contains($"cd \"$BTCPAY_BASE_DIRECTORY/{LitdFragment.FragmentDirectory}\"", Mainnet.InstallCommand);
+        Assert.Contains($"cat > {LitdFragment.FileName} <<", Mainnet.InstallCommand);
+        Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", Mainnet.InstallCommand);
+        Assert.Contains(Mainnet.Yaml, Mainnet.InstallCommand);
     }
 
     [Fact]
@@ -158,9 +207,9 @@ public class LitdFragmentTests
     [Fact]
     public void UninstallKeepsTheDataVolume()
     {
-        Assert.Contains($"btcpay-fragments remove {TerminalOptions.FragmentName}", LitdFragment.UninstallCommand);
-        Assert.DoesNotContain("docker volume rm", LitdFragment.UninstallCommand);
-        Assert.DoesNotContain("rm -f", LitdFragment.UninstallCommand);
+        Assert.Contains($"btcpay-fragments remove {TerminalOptions.FragmentName}", Mainnet.UninstallCommand);
+        Assert.DoesNotContain("docker volume rm", Mainnet.UninstallCommand);
+        Assert.DoesNotContain("rm -f", Mainnet.UninstallCommand);
     }
 
     [Fact]
@@ -168,7 +217,7 @@ public class LitdFragmentTests
     {
         // Either fragment keeps a container attached to the volume, so `docker volume rm` would fail
         // while one of them is still selected.
-        var wipe = LitdFragment.WipeCommand;
+        var wipe = Mainnet.WipeCommand;
         Assert.Contains(TerminalOptions.FragmentName, wipe);
         Assert.Contains(TerminalOptions.UpstreamFragmentName, wipe);
         Assert.True(
@@ -179,7 +228,7 @@ public class LitdFragmentTests
     [Fact]
     public void SwitchKeepsTheDataVolumeWhileReplacingTheFragment()
     {
-        var @switch = LitdFragment.SwitchCommand;
+        var @switch = Mainnet.SwitchCommand;
         Assert.Contains($"btcpay-fragments remove {TerminalOptions.UpstreamFragmentName}", @switch);
         Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", @switch);
         Assert.DoesNotContain("docker volume rm", @switch);

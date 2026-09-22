@@ -44,6 +44,13 @@ Two further trims beyond turning the UI off:
   directory. Add the four `--faraday.bitcoin.*` flags and the `bitcoin_datadir` mount back if you
   want those endpoints.
 
+On **regtest**, the fragment also passes `--autopilot.disable`. litd resolves the Lightning Labs
+Autopilot server address from its `--network` and, for anything but mainnet or testnet, returns
+`no autopilot server address specified` — which aborts startup rather than degrading one sub-server,
+so litd would never come up at all. Mainnet and testnet keep Autopilot. (btcpay-setup.sh only accepts
+mainnet, testnet and regtest, so those are the only three networks this can see; the rule is written
+as litd's own, which also covers signet and testnet4 should BTCPay ever allow them.)
+
 `LIT_AUTO_MIGRATE_TO_SQL` is not set either: litd has defaulted to SQLite since v0.17 and only
 prompts when it finds legacy kvdb files, so a fresh install never sees that prompt. If you are
 switching from a long-lived upstream install that predates v0.17, litd will stop at the migration

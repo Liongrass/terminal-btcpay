@@ -19,6 +19,12 @@ public class TerminalIndexViewModel
     /// install instructions do not apply and the page says so instead of offering them.
     /// </summary>
     public required bool DockerDeployment { get; init; }
+
+    /// <summary>
+    /// The host commands that install litd. Built by the controller rather than reached for from the
+    /// view, because the fragment now depends on the deployment's network - see LitdFragment.
+    /// </summary>
+    public required string InstallCommand { get; init; }
 }
 
 public class TerminalSessionViewModel

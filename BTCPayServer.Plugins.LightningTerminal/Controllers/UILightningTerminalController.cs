@@ -26,6 +26,7 @@ public class UILightningTerminalController(
     LitdStatusService statusService,
     LitdClient client,
     LitdPaths paths,
+    LitdFragment fragment,
     BTCPayServerOptions serverOptions) : Controller
 {
     /// <summary>
@@ -61,7 +62,8 @@ public class UILightningTerminalController(
             Status = status,
             Sessions = sessions,
             SessionsError = sessionsError,
-            DockerDeployment = serverOptions.DockerDeployment
+            DockerDeployment = serverOptions.DockerDeployment,
+            InstallCommand = fragment.InstallCommand
         });
     }
 
@@ -95,9 +97,9 @@ public class UILightningTerminalController(
             Operation = operation,
             Command = operation switch
             {
-                TerminalOperation.Switch => LitdFragment.SwitchCommand,
-                TerminalOperation.Uninstall => LitdFragment.UninstallCommand,
-                TerminalOperation.Wipe => LitdFragment.WipeCommand,
+                TerminalOperation.Switch => fragment.SwitchCommand,
+                TerminalOperation.Uninstall => fragment.UninstallCommand,
+                TerminalOperation.Wipe => fragment.WipeCommand,
                 _ => throw new ArgumentOutOfRangeException(nameof(operation))
             },
             DockerDeployment = serverOptions.DockerDeployment,
