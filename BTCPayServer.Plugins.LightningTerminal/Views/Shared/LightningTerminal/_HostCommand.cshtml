@@ -1,0 +1,14 @@
+@model string
+
+@* Every block this plugin asks an operator to paste into a root shell renders through here, so they
+   all get the same copy button and the same wrapping. pre-wrap rather than a horizontal scrollbar:
+   someone about to run this as root should be able to read all of it without scrolling sideways. *@
+<div class="d-flex justify-content-end mb-2">
+    <button type="button" class="btn btn-sm btn-secondary only-for-js clipboard-button"
+            data-clipboard="@Model"
+            data-clipboard-confirm="@StringLocalizer["Copied"]">
+        <vc:icon symbol="actions-copy"/>
+        <span class="ms-1">Copy</span>
+    </button>
+</div>
+<pre class="p-3 mb-0 rounded border bg-tile text-break" style="white-space: pre-wrap;"><code>@Model</code></pre>

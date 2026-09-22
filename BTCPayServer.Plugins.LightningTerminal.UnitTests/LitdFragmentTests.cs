@@ -81,8 +81,12 @@ public class LitdFragmentTests
     [Fact]
     public void InstallSnippetWritesTheFragmentWhereBtcpayFragmentsLooksForIt()
     {
-        Assert.Contains($"{TerminalOptions.FragmentName}.yml", LitdFragment.RelativePath);
-        Assert.Contains(LitdFragment.RelativePath, LitdFragment.InstallCommand);
+        Assert.Equal($"{TerminalOptions.FragmentName}.yml", LitdFragment.FileName);
+        Assert.Equal($"{LitdFragment.FragmentDirectory}/{LitdFragment.FileName}", LitdFragment.RelativePath);
+        // The snippet cds into the directory and then redirects, rather than carrying the whole path on
+        // the redirect line - so assert on both halves, since neither appears as RelativePath any more.
+        Assert.Contains($"cd \"$BTCPAY_BASE_DIRECTORY/{LitdFragment.FragmentDirectory}\"", LitdFragment.InstallCommand);
+        Assert.Contains($"cat > {LitdFragment.FileName} <<", LitdFragment.InstallCommand);
         Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", LitdFragment.InstallCommand);
         Assert.Contains(LitdFragment.Yaml, LitdFragment.InstallCommand);
     }

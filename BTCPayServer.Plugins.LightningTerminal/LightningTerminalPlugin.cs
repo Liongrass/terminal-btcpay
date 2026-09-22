@@ -32,6 +32,12 @@ public class LightningTerminalPlugin : BaseBTCPayServerPlugin
     /// </summary>
     public const string BlockerPartial = $"{MenuItemId}/_Blocker";
 
+    /// <summary>
+    /// Partial that renders one pasteable host command with its copy button. Every such block on this
+    /// plugin goes through it, so they cannot drift apart in presentation.
+    /// </summary>
+    public const string HostCommandPartial = $"{MenuItemId}/_HostCommand";
+
     public override string Identifier => "BTCPayServer.Plugins.LightningTerminal";
     public override string Name => "Lightning Terminal";
 

@@ -2,9 +2,6 @@
 @{
     var (title, lead) = Model.Operation switch
     {
-        TerminalOperation.Install => (
-            "Install Lightning Terminal",
-            "This writes a Compose fragment that adds litd to your deployment, then regenerates and restarts the stack."),
         TerminalOperation.Switch => (
             "Switch to the headless install",
             "This swaps BTCPay's own Lightning Terminal fragment for this plugin's headless one. litd's data volume is kept, so accounts, sessions and history carry over."),
@@ -66,15 +63,7 @@
             this page will become unreachable for a minute or two while BTCPay Server restarts.
         </p>
 
-        <div class="d-flex justify-content-end mb-2">
-            <button type="button" class="btn btn-secondary btn-sm only-for-js clipboard-button"
-                    data-clipboard="@Model.Command"
-                    data-clipboard-confirm="@StringLocalizer["Copied"]">
-                <vc:icon symbol="actions-copy"/>
-                <span class="ms-1">Copy</span>
-            </button>
-        </div>
-        <pre class="p-3 rounded border bg-tile text-break" style="white-space: pre-wrap;"><code>@Model.Command</code></pre>
+        <partial name="@LightningTerminalPlugin.HostCommandPartial" model="Model.Command"/>
 
         @if (!Model.DockerDeployment)
         {
@@ -94,7 +83,7 @@
             </div>
         }
 
-        @if (Model.Operation is TerminalOperation.Install or TerminalOperation.Switch)
+        @if (Model.Operation == TerminalOperation.Switch)
         {
             <h4 class="mt-4 mb-2">What the fragment does</h4>
             <p class="text-muted">

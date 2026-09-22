@@ -82,13 +82,6 @@ public class UILightningTerminalController(
 
         var blocker = operation switch
         {
-            TerminalOperation.Install when status.Installed => new InstallBlocker(
-                "Lightning Terminal is already installed on this deployment."),
-            TerminalOperation.Install when status.UpstreamOnly => new InstallBlocker(
-                "This deployment already runs Lightning Terminal through BTCPay's own fragment. Adding this " +
-                "plugin's fragment as well would leave two definitions of the same container, so switch " +
-                "instead of installing."),
-            TerminalOperation.Install => status.Backend.Blocker,
             TerminalOperation.Switch when !status.UpstreamOnly => new InstallBlocker(
                 "This deployment does not look like it runs BTCPay's own Lightning Terminal fragment, so " +
                 "there is nothing to switch from."),
@@ -102,7 +95,6 @@ public class UILightningTerminalController(
             Operation = operation,
             Command = operation switch
             {
-                TerminalOperation.Install => LitdFragment.InstallCommand,
                 TerminalOperation.Switch => LitdFragment.SwitchCommand,
                 TerminalOperation.Uninstall => LitdFragment.UninstallCommand,
                 TerminalOperation.Wipe => LitdFragment.WipeCommand,

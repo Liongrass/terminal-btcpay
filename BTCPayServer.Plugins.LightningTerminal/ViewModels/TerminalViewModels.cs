@@ -43,10 +43,12 @@ public class TerminalSessionViewModel
 }
 
 /// <summary>Which host-side operation the instructions page is walking the operator through.</summary>
+/// <remarks>
+/// No Install member: installing is rendered inline on the landing screen rather than on a page of its
+/// own, so there is no route that would reach it here. These three all act on an existing install.
+/// </remarks>
 public enum TerminalOperation
 {
-    Install,
-
     /// <summary>Move from btcpayserver-docker's own Lightning Terminal fragment to this plugin's headless one.</summary>
     Switch,
     Uninstall,
