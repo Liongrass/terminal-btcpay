@@ -114,6 +114,7 @@ public class LitdFragment(TerminalOptions options)
                 rpcmiddleware.enable=true
           {{TerminalOptions.DefaultRpcHost}}:
             image: "{{Image}}"
+            container_name: {{TerminalOptions.ContainerName}}
             restart: unless-stopped
             expose:
               - "{{TerminalOptions.DefaultRpcPort}}"

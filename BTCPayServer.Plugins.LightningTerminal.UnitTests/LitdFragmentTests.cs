@@ -98,6 +98,27 @@ public class LitdFragmentTests
     }
 
     [Fact]
+    public void ContainerIsNamedTheWayBtcpayNamesItsDaemons()
+    {
+        // btcpayserver_ plus the daemon's own name, as in btcpayserver_bitcoind and
+        // btcpayserver_lnd_bitcoin. Without container_name, Compose derives generated-lnd_lit-1, which
+        // is what an operator would otherwise find in docker ps.
+        Assert.Equal(TerminalOptions.ContainerName, Service(TerminalOptions.DefaultRpcHost)["container_name"]);
+        Assert.StartsWith("btcpayserver_", TerminalOptions.ContainerName);
+    }
+
+    [Fact]
+    public void TheServiceNameIsNotRenamedAlongWithTheContainer()
+    {
+        // The service name is litd's DNS name on the Docker network and is what upstream's fragment
+        // calls it too. Renaming it would move the address LitdClient dials and split this fragment
+        // from upstream's for anyone switching between the two, so only the container name changed.
+        Assert.Equal("lnd_lit", TerminalOptions.DefaultRpcHost);
+        Assert.True(((Dictionary<object, object>)Fragment["services"]).ContainsKey(TerminalOptions.DefaultRpcHost));
+        Assert.StartsWith(TerminalOptions.DefaultRpcHost, TerminalOptions.DataVolumeName);
+    }
+
+    [Fact]
     public void NoPlaintextListenerIsOpened()
     {
         // Upstream opens one because nginx proxies /lit/ to it. This plugin speaks TLS gRPC instead,

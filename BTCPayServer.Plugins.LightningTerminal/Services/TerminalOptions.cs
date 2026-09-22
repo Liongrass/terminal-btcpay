@@ -74,6 +74,18 @@ public class TerminalOptions
     /// <summary>btcpayserver-docker's own Lightning Terminal fragment, which runs litd with its web UI.</summary>
     public const string UpstreamFragmentName = "opt-add-lightning-terminal";
 
+    /// <summary>
+    /// What <c>docker ps</c> calls the litd container, following btcpayserver-docker's convention of
+    /// <c>btcpayserver_</c> plus the daemon's own name (btcpayserver_bitcoind, btcpayserver_lnd_bitcoin).
+    /// </summary>
+    /// <remarks>
+    /// Only the container name. The Compose <em>service</em> stays <see cref="DefaultRpcHost"/>, which is
+    /// what the service resolves to on the Docker network and what upstream's fragment also calls it -
+    /// renaming that would move litd's DNS name and split this fragment from upstream's for anyone
+    /// switching between the two.
+    /// </remarks>
+    public const string ContainerName = "btcpayserver_litd";
+
     /// <summary>Compose volume holding litd's data. Deliberately the same name upstream uses.</summary>
     public const string DataVolumeName = "lnd_lit_datadir";
 }

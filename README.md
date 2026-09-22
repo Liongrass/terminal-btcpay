@@ -28,6 +28,7 @@ This plugin generates its own fragment instead: the same one, with `--disableui`
 | litd image             | `…-path-prefix` rebuild (needed only to serve the UI under `/lit/`) | the plain Lightning Labs release image |
 | litd's listener        | `--insecure-httplisten` on `:8080`, for nginx to proxy | `--httpslisten` on `:8443`, no plaintext port |
 | Bitcoin Core data dir  | mounted into litd, for Faraday's `connect_bitcoin` | not mounted |
+| Container name         | Compose-derived (`generated-lnd_lit-1`) | `btcpayserver_litd` |
 
 The remote-LND wiring, the `lnd_lit_datadir` volume and `rpcmiddleware.enable=true` on LND are
 identical to upstream's, deliberately — the two fragments share a volume name, so you can move
