@@ -55,27 +55,12 @@
             </div>
         }
 
-        @* Uninstall says its piece in the lead above and goes straight to the command. Switch and wipe
-           are the consequential ones, so they keep the context. *@
-        @if (Model.Operation != TerminalOperation.Uninstall)
-        {
-            <h4 class="mt-4 mb-2">Why you have to run this yourself</h4>
-            <p class="text-muted">
-                Adding or removing a service rebuilds your Docker Compose stack, which restarts BTCPay
-                Server itself. Since BTCPay Server 2.4.4 a plugin's only channel to the host is
-                <code>btcpay-host</code>, whose command list is fixed by your deployment and does not
-                include fragment management - so this one step has to be run on the host. Everything else
-                this plugin does needs no host access at all.
-            </p>
-
-            <h4 class="mt-4 mb-2">Run this in a root shell on your BTCPay Server host</h4>
-            <p class="text-muted">
-                Connect over SSH as <code>root</code> (or use <code>sudo -i</code>) and paste the whole
-                block. <code>btcpay-fragments</code> applies the change immediately and brings the stack
-                back up, so this page will become unreachable for a minute or two while BTCPay Server
-                restarts.
-            </p>
-        }
+        @* Same sentence the install screen uses, so the one instruction that matters - run it as root -
+           reads identically wherever the plugin hands over a command block. *@
+        <p class="text-muted mb-3">
+            Copy the code snippet below and run it as root in the command line of your BTCPay Server
+            installation.
+        </p>
 
         <partial name="@LightningTerminalPlugin.HostCommandPartial" model="Model.Command"/>
 
