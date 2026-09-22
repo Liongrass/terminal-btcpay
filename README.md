@@ -163,3 +163,4 @@ serve the web UI, which this fragment turns off.
 
 Note that litd 0.17 migrates its database from bbolt to SQL on first start, and that migration is not
 reversible. Back up `lnd_lit_datadir` before bumping across it.
+# terminal-btcpay
