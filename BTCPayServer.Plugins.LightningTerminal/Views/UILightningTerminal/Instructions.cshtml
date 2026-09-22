@@ -1,16 +1,20 @@
 @model TerminalInstructionsViewModel
 @{
-    var (title, lead) = Model.Operation switch
+    // followUp is a second line under the lead, for the operations that have somewhere to go next.
+    var (title, lead, followUp) = Model.Operation switch
     {
         TerminalOperation.Switch => (
             "Switch to the headless install",
-            "This swaps BTCPay's own Lightning Terminal fragment for this plugin's headless one. litd's data volume is kept, so accounts, sessions and history carry over."),
+            "This swaps BTCPay's own Lightning Terminal fragment for this plugin's headless one. litd's data volume is kept, so accounts, sessions and history carry over.",
+            (string?)null),
         TerminalOperation.Uninstall => (
             "Uninstall Lightning Terminal",
-            "This removes the litd container and regenerates the stack without it. litd's data is kept."),
+            "This action removes litd from your BTCPay Server and restarts the instance. All data is kept.",
+            "You may then either re-install litd, download a backup of your data or remove the plugin (and all data) entirely."),
         _ => (
             "Wipe Lightning Terminal data",
-            "This removes litd and then destroys its data volume. There is no undo.")
+            "This removes litd and then destroys its data volume. There is no undo.",
+            (string?)null)
     };
     ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer[title]));
 }
@@ -28,7 +32,11 @@
 
 <div class="row">
     <div class="col-xl-10 col-xxl-constrain">
-        <p>@lead</p>
+        <p class="@(followUp is null ? null : "mb-1")">@lead</p>
+        @if (followUp is not null)
+        {
+            <p>@followUp</p>
+        }
 
         @if (Model.Blocker is { } blocker)
         {
