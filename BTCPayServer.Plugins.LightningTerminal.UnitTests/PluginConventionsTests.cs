@@ -42,10 +42,11 @@ public class PluginConventionsTests
         Assert.NotEmpty(CompiledViews);
     }
 
+    // Connect is absent on purpose: it mints a session and redirects straight to Terminal, so it has
+    // no view of its own.
     [Theory]
     [InlineData(nameof(UILightningTerminalController.Index))]
     [InlineData(nameof(UILightningTerminalController.Instructions))]
-    [InlineData(nameof(UILightningTerminalController.Connect))]
     public void EveryViewReturningActionHasAViewUnderItsControllerDirectory(string action)
     {
         var expected = $"{ViewDirectoryFor<UILightningTerminalController>()}{action}.cshtml";

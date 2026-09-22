@@ -108,11 +108,19 @@ public class UILightningTerminalController(
     }
 
     /// <summary>
-    /// Mints a fresh admin LNC session and hands back the link that pairs Terminal on the web with it.
+    /// Mints a fresh admin LNC session and sends the browser straight to Terminal on the web, paired.
     /// </summary>
     /// <remarks>
-    /// A POST, and always a new session: a pairing phrase is single-use, so a GET that minted one
-    /// would burn a credential on every refresh, prefetch or link preview.
+    /// <para>
+    /// A POST, and always a new session: a pairing phrase is single-use, so a GET that minted one would
+    /// burn a credential on every refresh, prefetch or link preview.
+    /// </para>
+    /// <para>
+    /// Redirecting rather than rendering the phrase keeps it out of a page the operator has to act on,
+    /// and it stays out of Terminal's server logs either way - it rides in the URL fragment, which the
+    /// browser never puts on the wire. The redirect host is always TerminalConnect.BaseUrl; nothing
+    /// user-supplied reaches it, so this is not an open redirect.
+    /// </para>
     /// </remarks>
     [HttpPost("connect")]
     public async Task<IActionResult> Connect(CancellationToken cancellationToken)
@@ -121,14 +129,10 @@ public class UILightningTerminalController(
         try
         {
             var session = await client.AddSessionAsync(label, SessionExpiry, cancellationToken);
-            return View(new TerminalConnectViewModel
-            {
-                PairingUrl = TerminalConnect.PairingUrl(session),
-                PairingPhrase = session.PairingSecretMnemonic,
-                MailboxServerAddress = session.MailboxServerAddr,
-                Label = session.Label,
-                Expiry = DateTimeOffset.FromUnixTimeSeconds((long)session.ExpiryTimestampSeconds)
-            });
+
+            // Terminal has no business knowing which BTCPay instance sent the operator over.
+            Response.Headers["Referrer-Policy"] = "no-referrer";
+            return Redirect(TerminalConnect.PairingUrl(session));
         }
         catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
         {

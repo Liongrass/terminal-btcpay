@@ -21,7 +21,9 @@
         <div class="d-flex gap-2">
             @if (status.Running)
             {
-                <form method="post" asp-action="Connect">
+                @* target=_blank so the plugin page survives the click; the action redirects this new
+                   tab straight to Terminal with the pairing phrase in the URL fragment. *@
+                <form method="post" asp-action="Connect" target="_blank">
                     <button type="submit" class="btn btn-primary">Connect to Terminal</button>
                 </form>
             }

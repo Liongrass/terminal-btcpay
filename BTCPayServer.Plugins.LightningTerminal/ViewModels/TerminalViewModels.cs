@@ -73,12 +73,3 @@ public class TerminalInstructionsViewModel
     /// </summary>
     public InstallBlocker? Blocker { get; init; }
 }
-
-public class TerminalConnectViewModel
-{
-    public required string PairingUrl { get; init; }
-    public required string PairingPhrase { get; init; }
-    public required string MailboxServerAddress { get; init; }
-    public required string Label { get; init; }
-    public required DateTimeOffset Expiry { get; init; }
-}
