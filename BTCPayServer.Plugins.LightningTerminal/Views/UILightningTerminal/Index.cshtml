@@ -16,19 +16,14 @@
 
 <div class="sticky-header d-flex align-items-center justify-content-between">
     <h2 class="my-1">@ViewData["Title"]</h2>
-    @if (status.Installed)
+    @* Running implies Installed - LitdStatus only reports Running for a litd that answered - so this
+       one condition covers both. target=_blank so the plugin page survives the click; the action
+       redirects that new tab straight to Terminal with the pairing phrase in the URL fragment. *@
+    @if (status.Running)
     {
-        <div class="d-flex gap-2">
-            @if (status.Running)
-            {
-                @* target=_blank so the plugin page survives the click; the action redirects this new
-                   tab straight to Terminal with the pairing phrase in the URL fragment. *@
-                <form method="post" asp-action="Connect" target="_blank">
-                    <button type="submit" class="btn btn-primary">Connect to Terminal</button>
-                </form>
-            }
-            <a asp-action="Index" class="btn btn-secondary">Refresh</a>
-        </div>
+        <form method="post" asp-action="Connect" target="_blank">
+            <button type="submit" class="btn btn-primary">Connect to Terminal</button>
+        </form>
     }
 </div>
 <partial name="_StatusMessage"/>
