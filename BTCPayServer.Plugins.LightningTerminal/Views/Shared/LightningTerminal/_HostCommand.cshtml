@@ -1,8 +1,23 @@
 @model string
 
 @* Every block this plugin asks an operator to paste into a root shell renders through here, so they
-   all get the same copy button and the same wrapping. pre-wrap rather than a horizontal scrollbar:
-   someone about to run this as root should be able to read all of it without scrolling sideways. *@
+   all get the same copy button and the same wrapping.
+
+   A bare <pre>, the way core's own command blocks are written (UpdatePointOfSale, SetupLightningNode).
+   Deliberately NOT <pre><code>, and deliberately no background utility:
+
+     - BTCPay already styles pre itself - `pre { color: var(--btcpay-pre-text) }` and
+       `pre, pre code { background: var(--btcpay-pre-bg) }` - which is white on near-black in BOTH
+       themes. Adding bg-tile here only recolours the pre, leaving the inner code dark on top of it.
+     - `pre:not(.text-wrap) code { padding: var(--btcpay-space-m) !important }` puts 16px of padding
+       on an *inline* <code>. Vertical padding does not grow an inline box's line height, so once the
+       content wraps, every line paints its own dark rectangle overlapping the lines above and below:
+       the text is still there and still copyable, but struck through in black.
+     - .text-wrap is not the escape hatch it looks like - it is `white-space: normal !important`,
+       which would collapse a multi-line script onto one line.
+
+   Hence pre-wrap inline, and overflow-wrap so the one long $BTCPAY_BASE_DIRECTORY path wraps instead
+   of forcing a horizontal scrollbar. Neither affects what the copy button puts on the clipboard. *@
 <div class="d-flex justify-content-end mb-2">
     <button type="button" class="btn btn-sm btn-secondary only-for-js clipboard-button"
             data-clipboard="@Model"
@@ -11,4 +26,4 @@
         <span class="ms-1">Copy</span>
     </button>
 </div>
-<pre class="p-3 mb-0 rounded border bg-tile text-break" style="white-space: pre-wrap;"><code>@Model</code></pre>
+<pre class="p-3 mb-0" style="white-space: pre-wrap; overflow-wrap: anywhere;">@Model</pre>
