@@ -42,7 +42,7 @@ public class LightningBackendDetectorTests
 
         Assert.Equal(LightningBackendKind.ExternalLnd, backend.Kind);
         Assert.False(backend.CanRunLitd);
-        Assert.Contains("lnd.example.com", backend.Blocker);
+        Assert.Contains("lnd.example.com", backend.Blocker!.Message);
     }
 
     [Theory]
@@ -56,7 +56,7 @@ public class LightningBackendDetectorTests
 
         Assert.Equal(LightningBackendKind.Other, backend.Kind);
         Assert.False(backend.CanRunLitd);
-        Assert.Contains(expectedName, backend.Blocker);
+        Assert.Contains(expectedName, backend.Blocker!.Message);
     }
 
     [Fact]
@@ -87,6 +87,32 @@ public class LightningBackendDetectorTests
         var backend = new LightningBackend(LightningBackendKind.None, null, null);
 
         Assert.False(backend.CanRunLitd);
-        Assert.Contains("BTCPAYGEN_LIGHTNING=lnd", backend.Blocker);
+        // The one blocker an operator can act on without leaving the page, so it must carry the
+        // commands rather than describe them.
+        Assert.Contains("BTCPAYGEN_LIGHTNING=lnd", backend.Blocker!.Command);
+    }
+
+    [Fact]
+    public void OnlyTheMissingNodeBlockerShipsCommands()
+    {
+        // The others cannot be fixed by pasting anything - swapping implementations or moving an
+        // external node is a decision, not a command - so offering a copy button would mislead.
+        Assert.Null(LightningBackendDetector.Classify("type=clightning;server=unix://x").Blocker!.Command);
+        Assert.Null(LightningBackendDetector.Classify("type=lnd-rest;server=https://lnd.example.com/").Blocker!.Command);
+    }
+
+    [Fact]
+    public void MissingNodeCommandsRunFromTheDeploymentDirectory()
+    {
+        var command = new LightningBackend(LightningBackendKind.None, null, null).Blocker!.Command!;
+
+        // btcpay-setup.sh is sourced, not executed, and only exists in btcpayserver-docker - so the
+        // block has to put the operator there itself rather than trust where they are standing.
+        Assert.Contains("cd \"$BTCPAY_BASE_DIRECTORY/btcpayserver-docker\"", command);
+        Assert.Contains(". ./btcpay-setup.sh -i", command);
+        Assert.True(
+            command.IndexOf("export BTCPAYGEN_LIGHTNING=lnd", StringComparison.Ordinal) <
+            command.IndexOf(". ./btcpay-setup.sh", StringComparison.Ordinal),
+            "btcpay-setup.sh reads BTCPAYGEN_LIGHTNING, so the export has to come first");
     }
 }

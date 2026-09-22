@@ -25,6 +25,13 @@ public class LightningTerminalPlugin : BaseBTCPayServerPlugin
     /// </summary>
     public const string NavExtensionPartial = $"{MenuItemId}/NavExtension";
 
+    /// <summary>
+    /// Partial that renders an <see cref="Services.InstallBlocker"/>. Shared by the landing screen and
+    /// the instructions page, and named here for the same reason as the nav partial: partial lookup
+    /// searches /Views/Shared across every loaded plugin, so the directory segment is what keeps it ours.
+    /// </summary>
+    public const string BlockerPartial = $"{MenuItemId}/_Blocker";
+
     public override string Identifier => "BTCPayServer.Plugins.LightningTerminal";
     public override string Name => "Lightning Terminal";
 

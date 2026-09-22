@@ -63,7 +63,7 @@ public class TerminalInstructionsViewModel
     /// Set when the operation cannot sensibly be run right now - litd is not installed and so cannot
     /// be uninstalled, or the deployment has no LND for litd to attach to.
     /// </summary>
-    public string? Blocker { get; init; }
+    public InstallBlocker? Blocker { get; init; }
 }
 
 public class TerminalConnectViewModel

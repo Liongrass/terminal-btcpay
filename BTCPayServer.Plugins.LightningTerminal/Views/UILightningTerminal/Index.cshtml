@@ -98,8 +98,8 @@
         else if (status.Backend.Blocker is { } blocker)
         {
             <div class="alert alert-danger mb-0">
-                <strong>Lightning Terminal cannot be installed on this deployment.</strong>
-                <span class="d-block mt-1">@blocker</span>
+                <strong class="d-block mb-1">Lightning Terminal cannot be installed on this deployment.</strong>
+                <partial name="@LightningTerminalPlugin.BlockerPartial" model="blocker"/>
             </div>
         }
         else

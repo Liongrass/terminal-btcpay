@@ -35,7 +35,9 @@
 
         @if (Model.Blocker is { } blocker)
         {
-            <div class="alert alert-warning">@blocker</div>
+            <div class="alert alert-warning">
+                <partial name="@LightningTerminalPlugin.BlockerPartial" model="blocker"/>
+            </div>
         }
 
         @if (Model.Operation == TerminalOperation.Wipe)

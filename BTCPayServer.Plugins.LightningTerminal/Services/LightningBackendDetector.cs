@@ -18,6 +18,14 @@ public enum LightningBackendKind
     Other
 }
 
+/// <summary>Why something cannot be installed, and - when there is one - what to run to fix it.</summary>
+/// <param name="Message">Plain prose. Rendered as text, so it carries no markup of its own.</param>
+/// <param name="Command">
+/// Shell to paste into a root shell on the host, or null when the blocker is not something a command
+/// resolves. Rendered as a copyable block rather than inline, the same way the install instructions are.
+/// </param>
+public record InstallBlocker(string Message, string? Command = null);
+
 /// <param name="Kind">What this plugin is willing to do with the backend it found.</param>
 /// <param name="Type">The <c>type=</c> of the internal connection string, e.g. <c>lnd-rest</c> or <c>clightning</c>.</param>
 /// <param name="Server">The <c>server=</c> of the internal connection string, if it had one.</param>
@@ -26,18 +34,27 @@ public record LightningBackend(LightningBackendKind Kind, string? Type, string? 
     public bool CanRunLitd => Kind is LightningBackendKind.BundledLnd;
 
     /// <summary>Why litd cannot be installed, phrased for an operator. Null when it can.</summary>
-    public string? Blocker => Kind switch
+    public InstallBlocker? Blocker => Kind switch
     {
         LightningBackendKind.BundledLnd => null,
-        LightningBackendKind.None =>
-            "This deployment has no internal Lightning node. Lightning Terminal drives LND, so set " +
-            "BTCPAYGEN_LIGHTNING=lnd and re-run btcpay-setup.sh before installing it.",
-        LightningBackendKind.ExternalLnd =>
+        LightningBackendKind.None => new InstallBlocker(
+            "This server has no internal Lightning node. Lightning Terminal requires LND to be already " +
+            "running. To install LND on your BTCPay Server, follow these steps as root in your " +
+            "btcpayserver-docker directory:",
+            // The one blocker an operator can act on immediately, so it ships the commands. The cd is
+            // absolute rather than relative: the prose says which directory to be in, but a block that
+            // only works from the right working directory is a block that silently runs in the wrong one.
+            """
+            export BTCPAYGEN_LIGHTNING=lnd
+            cd "$BTCPAY_BASE_DIRECTORY/btcpayserver-docker"
+            . ./btcpay-setup.sh -i
+            """),
+        LightningBackendKind.ExternalLnd => new InstallBlocker(
             $"This deployment's Lightning node is an LND that lives outside the deployment ({Server}). " +
             "Lightning Terminal is installed as a container alongside BTCPay's own LND and connects to it " +
-            "over the internal Docker network, so it cannot be pointed at an external node from here.",
-        _ =>
-            $"This deployment's Lightning node is {Describe(Type)}, not LND. Lightning Terminal only supports LND."
+            "over the internal Docker network, so it cannot be pointed at an external node from here."),
+        _ => new InstallBlocker(
+            $"This deployment's Lightning node is {Describe(Type)}, not LND. Lightning Terminal only supports LND.")
     };
 
     private static string Describe(string? type) => type switch

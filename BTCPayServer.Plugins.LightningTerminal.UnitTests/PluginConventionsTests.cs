@@ -88,6 +88,28 @@ public class PluginConventionsTests
     }
 
     [Fact]
+    public void EveryPartialNamedOnThePluginResolvesToACompiledSharedView()
+    {
+        // Reflective rather than a list, so a partial added later is covered without anyone
+        // remembering to come back here. A <partial name="..."> that resolves to nothing throws only
+        // when the page is actually opened, and only on the branch that renders it.
+        var partials = typeof(LightningTerminalPlugin)
+            .GetFields(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+            .Where(field => field is { IsLiteral: true, IsInitOnly: false } && field.FieldType == typeof(string))
+            .Where(field => field.Name.EndsWith("Partial", StringComparison.Ordinal))
+            .Select(field => (field.Name, Value: (string)field.GetRawConstantValue()!))
+            .ToArray();
+
+        Assert.NotEmpty(partials);
+        foreach (var (name, value) in partials)
+        {
+            Assert.True(
+                CompiledViews.Contains($"/Views/Shared/{value}.cshtml"),
+                $"{name} is \"{value}\" but /Views/Shared/{value}.cshtml is not compiled into the plugin");
+        }
+    }
+
+    [Fact]
     public void NavPartialIsRegisteredIntoThePluginsMenu()
     {
         var services = new ServiceCollection();
