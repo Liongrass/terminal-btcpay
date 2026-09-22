@@ -132,7 +132,7 @@ public class UILightningTerminalController(
     [HttpPost("connect")]
     public async Task<IActionResult> Connect(CancellationToken cancellationToken)
     {
-        var label = $"BTCPay Server {DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss} UTC";
+        var label = TerminalConnect.DefaultSessionLabel(DateTimeOffset.UtcNow);
         try
         {
             // The one-click path takes every default: admin, litcli's 90 days, the standard mailbox.

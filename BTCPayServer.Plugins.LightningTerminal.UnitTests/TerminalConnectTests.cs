@@ -103,3 +103,26 @@ public class CreatableSessionTypeTests
         Assert.Equal(90, model.ExpiryDays);
     }
 }
+
+public class DefaultSessionLabelTests
+{
+    [Fact]
+    public void IsTheProductNameAndTheDate()
+    {
+        var label = TerminalConnect.DefaultSessionLabel(
+            new DateTimeOffset(2026, 9, 22, 17, 32, 17, TimeSpan.Zero));
+
+        Assert.Equal("Lightning Terminal 2026-09-22", label);
+    }
+
+    [Fact]
+    public void TwoSessionsOnTheSameDayMaySharePlainly()
+    {
+        // Safe because litd puts no unique constraint on session labels - only on a session's alias and
+        // local public key, both of which it generates itself. A collision here is not an error.
+        var morning = TerminalConnect.DefaultSessionLabel(new DateTimeOffset(2026, 9, 22, 8, 0, 0, TimeSpan.Zero));
+        var evening = TerminalConnect.DefaultSessionLabel(new DateTimeOffset(2026, 9, 22, 20, 0, 0, TimeSpan.Zero));
+
+        Assert.Equal(morning, evening);
+    }
+}

@@ -17,6 +17,16 @@ public static class TerminalConnect
 {
     public const string BaseUrl = "https://terminal.lightning.engineering";
 
+    /// <summary>
+    /// The label one-click Connect gives a session, since it asks for none.
+    /// </summary>
+    /// <remarks>
+    /// Date only, no clock time: litd puts no unique constraint on session labels - the sessions table
+    /// uniques alias and local_public_key, and it is the accounts table that uniques label - so two
+    /// sessions minted on the same day may share one, and the list tells them apart by state and expiry.
+    /// </remarks>
+    public static string DefaultSessionLabel(DateTimeOffset now) => $"Lightning Terminal {now:yyyy-MM-dd}";
+
     public static string PairingUrl(Session session)
     {
         var payload = $"{session.PairingSecretMnemonic}||{session.MailboxServerAddr}||{TypeLabel(session.SessionType)}";
