@@ -60,14 +60,17 @@
     @if (!status.Installed)
     {
         <hr/>
-        @if (!status.UpstreamOnly)
+        @* Only when there is no litd here at all. A deployment on the upstream fragment already has it,
+           so this would be pitching something they are running. *@
+        @if (status.NotFound)
         {
             <p class="text-muted">
-                Lightning Terminal (<code>litd</code>) adds Loop, Pool and Faraday to your node and lets you
-                manage channel liquidity from
-                <a href="@TerminalConnect.BaseUrl" target="_blank" rel="noreferrer noopener">Terminal on the web</a>.
-                Installing this plugin does not install <code>litd</code> - that is a separate, deliberate step
-                that rebuilds and restarts your deployment.
+                Litd includes Loop, Pool, Taproot Assets and Faraday. Through Lightning Node Connect (LNC)
+                you can connect to your node from
+                <a href="@TerminalConnect.BaseUrl" target="_blank" rel="noreferrer noopener">Lightning Terminal</a>
+                or a mobile wallet of your choice. This plug-in guides you through how to add
+                <code>litd</code> to your BTCPay Server, connect to Lightning Terminal and manages your
+                remote connections.
             </p>
         }
 

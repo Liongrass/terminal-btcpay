@@ -49,6 +49,17 @@ public record LitdStatus(
     /// plugin and the two fragments would collide if both were selected.
     /// </summary>
     public bool UpstreamOnly => !Installed && UpstreamUrl is not null;
+
+    /// <summary>
+    /// No litd on this deployment at all, by either fragment - the only state in which there is
+    /// something to introduce rather than something to report on.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not just <c>!Installed</c>: a deployment running the upstream fragment has litd,
+    /// this plugin just cannot see into it, and pitching litd to someone already running it reads as a
+    /// bug. Exactly one of <see cref="Installed"/>, <see cref="UpstreamOnly"/> and this is ever true.
+    /// </remarks>
+    public bool NotFound => !Installed && UpstreamUrl is null;
 }
 
 public class LitdStatusService(
