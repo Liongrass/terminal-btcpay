@@ -1,6 +1,6 @@
 @model TerminalIndexViewModel
 @{
-    ViewData.SetLayoutModel(new LayoutModel("LightningTerminal", StringLocalizer["Lightning Terminal"]));
+    ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer["Lightning Terminal"]));
 
     var status = Model.Status;
     var (dot, headline) = !status.Installed

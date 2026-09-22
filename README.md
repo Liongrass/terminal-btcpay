@@ -122,7 +122,7 @@ Neither touches LND itself, its channels, or its funds: those live in a differen
 ```bash
 git submodule update --init --recursive   # pins BTCPay Server, built against as a ProjectReference
 dotnet build                              # compiles C# and Razor views
-dotnet test                               # fragment, pairing-URL, path and backend-detection tests
+dotnet test                               # fragment, pairing-URL, path, backend-detection and plugin-convention tests
 ./scripts/plugin-register.sh              # load the plugin in a local BTCPay debug session
 ./scripts/build-plugin.sh                 # package a .btcpay
 ./scripts/check-proto-drift.sh            # fail if the vendored protos have gone stale

@@ -7,7 +7,7 @@
 <li class="nav-item" permission="@Policies.CanModifyServerSettings">
     @* No explicit id or class: layout-menu-item writes both (id="menu-item-LightningTerminal", plus the
        active state), and setting either here renders a duplicate attribute. *@
-    <a layout-menu-item="LightningTerminal" asp-area="" asp-controller="UILightningTerminal" asp-action="Index">
+    <a layout-menu-item="@LightningTerminalPlugin.MenuItemId" asp-area="" asp-controller="UILightningTerminal" asp-action="Index">
         <vc:icon symbol="logo-lightningterminal"/>
         <span text-translate="true">Lightning Terminal</span>
     </a>

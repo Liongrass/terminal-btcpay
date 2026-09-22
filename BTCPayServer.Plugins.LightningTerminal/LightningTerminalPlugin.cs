@@ -7,6 +7,24 @@ namespace BTCPayServer.Plugins.LightningTerminal;
 
 public class LightningTerminalPlugin : BaseBTCPayServerPlugin
 {
+    /// <summary>
+    /// Ties the nav entry to the pages it links to: the nav partial stamps it as this item's id, and
+    /// every page announces it through <c>LayoutModel</c> so the entry renders active. The two have to
+    /// agree or the entry simply never highlights, which nothing else would catch.
+    /// </summary>
+    /// <remarks>
+    /// It is also the DOM id BTCPay writes (<c>menu-item-LightningTerminal</c>), which is why it carries
+    /// the full plugin name rather than a short one - the Plugins menu is shared with every other plugin.
+    /// </remarks>
+    public const string MenuItemId = "LightningTerminal";
+
+    /// <summary>
+    /// Partial rendered into the <c>header-nav</c> extension point. Resolved by name against
+    /// <c>/Views/Shared/{name}.cshtml</c>, and that search runs across every loaded plugin, so the
+    /// directory segment is what keeps it from colliding with another plugin's nav partial.
+    /// </summary>
+    public const string NavExtensionPartial = $"{MenuItemId}/NavExtension";
+
     public override string Identifier => "BTCPayServer.Plugins.LightningTerminal";
     public override string Name => "Lightning Terminal";
 
@@ -32,7 +50,7 @@ public class LightningTerminalPlugin : BaseBTCPayServerPlugin
 
         // header-nav is the "Plugins" section of the main navigation; the partial hides itself from
         // anyone without CanModifyServerSettings.
-        services.AddUIExtension("header-nav", "LightningTerminal/NavExtension");
+        services.AddUIExtension("header-nav", NavExtensionPartial);
 
         base.Execute(services);
     }
