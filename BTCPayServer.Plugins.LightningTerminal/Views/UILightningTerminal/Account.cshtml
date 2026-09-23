@@ -51,7 +51,7 @@
                     @if (account.Expiry is { } expiry)
                     {
                         <span class="@(account.HasExpired ? "text-danger" : null)">
-                            @expiry.ToString("yyyy-MM-dd HH:mm") UTC
+                            @expiry.ToDisplayDateTime()
                             @(account.HasExpired ? "(expired)" : null)
                         </span>
                     }
@@ -61,7 +61,7 @@
                     }
                 </dd>
                 <dt class="col-sm-3 text-muted fw-normal">Last updated</dt>
-                <dd class="col-sm-9 mb-0">@Model.LastUpdate.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+                <dd class="col-sm-9 mb-0">@Model.LastUpdate.ToDisplayDateTime()</dd>
             </dl>
         </div>
 

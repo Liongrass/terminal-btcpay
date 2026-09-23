@@ -112,7 +112,7 @@ public class DefaultSessionLabelTests
         var label = TerminalConnect.DefaultSessionLabel(
             new DateTimeOffset(2026, 9, 22, 17, 32, 17, TimeSpan.Zero));
 
-        Assert.Equal("Lightning Terminal 2026-09-22", label);
+        Assert.Equal("Lightning Terminal 2026/09/22", label);
     }
 
     [Fact]

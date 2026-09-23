@@ -226,7 +226,7 @@
                             <td class="text-break">@session.Label</td>
                             <td>@session.Type</td>
                             <td>@session.State</td>
-                            <td>@session.Expiry.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            <td>@session.Expiry.ToDisplayDateTime()</td>
                             <td class="text-end text-nowrap">
                                 @if (session.PairingUrl is { } pairingUrl)
                                 {
@@ -296,7 +296,7 @@
                                 @if (account.Expiry is { } expiry)
                                 {
                                     <span class="@(account.HasExpired ? "text-danger" : null)">
-                                        @expiry.ToString("yyyy-MM-dd") UTC
+                                        @expiry.ToDisplayDate()
                                     </span>
                                 }
                                 else
