@@ -19,14 +19,14 @@
     ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer[title]));
 }
 
-<div class="sticky-header">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-1">
+<div class="sticky-header align-items-start">
+    <nav aria-label="breadcrumb" class="flex-grow-1">
+        <ol class="breadcrumb">
             <li class="breadcrumb-item"><a asp-action="Index">Lightning Terminal</a></li>
             <li class="breadcrumb-item active" aria-current="page">@title</li>
         </ol>
+        <h2 class="mb-0">@title</h2>
     </nav>
-    <h2 class="my-1">@title</h2>
 </div>
 <partial name="_StatusMessage"/>
 

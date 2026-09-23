@@ -4,14 +4,14 @@
     ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer["Generate a pairing phrase"]));
 }
 
-<div class="sticky-header">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb mb-1">
+<div class="sticky-header align-items-start">
+    <nav aria-label="breadcrumb" class="flex-grow-1">
+        <ol class="breadcrumb">
             <li class="breadcrumb-item"><a asp-action="Index">Lightning Terminal</a></li>
             <li class="breadcrumb-item active" aria-current="page">Generate a pairing phrase</li>
         </ol>
+        <h2 class="mb-0">@ViewData["Title"]</h2>
     </nav>
-    <h2 class="my-1">@ViewData["Title"]</h2>
 </div>
 <partial name="_StatusMessage"/>
 
