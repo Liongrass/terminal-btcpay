@@ -137,6 +137,22 @@ it would need a permissions editor to be worth anything.
 A phrase pairs one client, once. Sessions are listed on the plugin page with their state, and can be
 revoked there.
 
+## Accounts
+
+An account caps how much can be spent through it — a ceiling, not a transfer, so nothing leaves the
+node until the account actually pays something. Pair one with a Custodial session to hand someone a
+budget rather than your node.
+
+**Create new account** takes a label (optional, unique when set), a starting balance in satoshis, and
+an expiry date that defaults to never. Each account's page shows what is left of its balance, its
+payment history and the hashes of any invoices it created.
+
+Two things litd's own semantics dictate in that view:
+
+- A payment's **reserved** amount includes the fee limit it set aside, and litd notes the actual debit
+  is usually lower — so it is not labelled as the amount paid.
+- litd records **only the payment hash** for an account's invoices: no amount, no state.
+
 These are **admin** sessions: whoever holds the phrase can move funds and manage channels. The whole
 page is gated on `CanModifyServerSettings` for that reason.
 

@@ -104,6 +104,53 @@ public sealed class LitdClient(TerminalOptions options, LitdPaths paths) : IDisp
             Authenticated(), Deadline(TimeSpan.FromSeconds(10)), cancellationToken);
     }
 
+    /// <summary>
+    /// Creates an account with a spendable ceiling. Equivalent to <c>litcli accounts create</c>.
+    /// </summary>
+    /// <param name="balanceSats">The maximum the account may spend, in satoshis.</param>
+    /// <param name="expiry">When it stops working, or null for an account that never expires.</param>
+    /// <param name="label">Optional, but unique across accounts when set.</param>
+    /// <param name="cancellationToken">Cancels the call.</param>
+    public async Task<Account> CreateAccountAsync(
+        ulong balanceSats, DateTimeOffset? expiry, string? label, CancellationToken cancellationToken)
+    {
+        var client = new Accounts.AccountsClient(GetChannel());
+        var request = new CreateAccountRequest
+        {
+            AccountBalance = balanceSats,
+            // litd reads anything above zero as a unix timestamp and everything else as "never".
+            ExpirationDate = expiry?.ToUnixTimeSeconds() ?? 0,
+            Label = label ?? string.Empty
+        };
+        var response = await client.CreateAccountAsync(
+            request, Authenticated(), Deadline(TimeSpan.FromSeconds(30)), cancellationToken);
+        return response.Account;
+    }
+
+    /// <summary>
+    /// One account with its invoices and payments. Equivalent to <c>litcli accounts info</c>.
+    /// </summary>
+    public async Task<Account> AccountInfoAsync(string id, CancellationToken cancellationToken)
+    {
+        var client = new Accounts.AccountsClient(GetChannel());
+        return await client.AccountInfoAsync(
+            new AccountInfoRequest { Id = id }, Authenticated(), Deadline(TimeSpan.FromSeconds(10)), cancellationToken);
+    }
+
+    /// <summary>
+    /// Deletes an account. Equivalent to <c>litcli accounts remove</c>.
+    /// </summary>
+    /// <remarks>
+    /// Addressed by id rather than label: a label is optional, and litd takes either, so the id is the
+    /// one handle every account is guaranteed to have.
+    /// </remarks>
+    public async Task RemoveAccountAsync(string id, CancellationToken cancellationToken)
+    {
+        var client = new Accounts.AccountsClient(GetChannel());
+        await client.RemoveAccountAsync(
+            new RemoveAccountRequest { Id = id }, Authenticated(), Deadline(TimeSpan.FromSeconds(10)), cancellationToken);
+    }
+
     private static DateTime Deadline(TimeSpan timeout) => DateTime.UtcNow.Add(timeout);
 
     private Metadata Authenticated()

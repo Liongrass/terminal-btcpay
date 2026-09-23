@@ -188,7 +188,7 @@
 
     <div class="widget mb-4">
         <div class="d-flex align-items-center justify-content-between mb-3">
-            <h5 class="mb-0">Terminal sessions</h5>
+            <h5 class="mb-0">Sessions</h5>
             <a asp-action="NewSession" class="btn btn-secondary btn-sm">Generate pairing phrase</a>
         </div>
         <p class="text-muted">
@@ -243,6 +243,74 @@
                                         </button>
                                     </form>
                                 }
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+
+    <div class="widget mb-4">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h5 class="mb-0">Accounts</h5>
+            <a asp-action="NewAccount" class="btn btn-secondary btn-sm">Create new account</a>
+        </div>
+        <p class="text-muted">
+            An account caps how much can be spent through it. Pair one with a Custodial session to hand
+            someone a budget rather than your node.
+        </p>
+
+        @if (Model.AccountsError is not null)
+        {
+            <div class="alert alert-warning">@Model.AccountsError</div>
+        }
+        else if (Model.Accounts.Count == 0)
+        {
+            <p class="text-muted mb-0">No accounts yet.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                    <tr>
+                        <th>Account</th>
+                        <th class="text-end">Remaining</th>
+                        <th class="text-end">Of</th>
+                        <th>Expires</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var account in Model.Accounts)
+                    {
+                        <tr>
+                            <td class="text-break">
+                                <a asp-action="Account" asp-route-id="@account.Id">@account.Display</a>
+                            </td>
+                            <td class="text-end">@account.CurrentBalanceSats.ToString("N0") sats</td>
+                            <td class="text-end text-muted">@account.InitialBalanceSats.ToString("N0") sats</td>
+                            <td>
+                                @if (account.Expiry is { } expiry)
+                                {
+                                    <span class="@(account.HasExpired ? "text-danger" : null)">
+                                        @expiry.ToString("yyyy-MM-dd") UTC
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">Never</span>
+                                }
+                            </td>
+                            <td class="text-end text-nowrap">
+                                <form method="post" asp-action="RemoveAccount" asp-route-id="@account.Id" class="d-inline">
+                                    <button type="submit" class="btn btn-link btn-sm p-0 text-danger"
+                                            onclick="return confirm('Remove @account.Display? Anything paired to it stops working.');">
+                                        Remove
+                                    </button>
+                                </form>
                             </td>
                         </tr>
                     }

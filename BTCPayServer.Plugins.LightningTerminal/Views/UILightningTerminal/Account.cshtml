@@ -1,0 +1,129 @@
+@model AccountDetailViewModel
+@{
+    var account = Model.Account;
+    ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer["Account"]));
+    var spent = (long)account.InitialBalanceSats - account.CurrentBalanceSats;
+}
+
+<div class="sticky-header d-flex align-items-center justify-content-between">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-1">
+                <li class="breadcrumb-item"><a asp-action="Index">Lightning Terminal</a></li>
+                <li class="breadcrumb-item active" aria-current="page">@account.Display</li>
+            </ol>
+        </nav>
+        <h2 class="my-1">@account.Display</h2>
+    </div>
+    <form method="post" asp-action="RemoveAccount" asp-route-id="@account.Id">
+        <button type="submit" class="btn btn-outline-danger"
+                onclick="return confirm('Remove @account.Display? Anything paired to it stops working.');">
+            Remove account
+        </button>
+    </form>
+</div>
+<partial name="_StatusMessage"/>
+
+<div class="row">
+    <div class="col-xl-10 col-xxl-constrain">
+        <div class="widget mb-4">
+            <div class="d-flex align-items-baseline justify-content-between mb-3">
+                <span class="fs-2 fw-bold">@account.CurrentBalanceSats.ToString("N0") sats</span>
+                <span class="text-muted">
+                    remaining of @account.InitialBalanceSats.ToString("N0")
+                    @if (spent > 0)
+                    {
+                        <text>&mdash; @spent.ToString("N0") spent</text>
+                    }
+                </span>
+            </div>
+
+            <dl class="row mb-0">
+                <dt class="col-sm-3 text-muted fw-normal">ID</dt>
+                <dd class="col-sm-9"><code>@account.Id</code></dd>
+                @if (!string.IsNullOrWhiteSpace(account.Label))
+                {
+                    <dt class="col-sm-3 text-muted fw-normal">Label</dt>
+                    <dd class="col-sm-9">@account.Label</dd>
+                }
+                <dt class="col-sm-3 text-muted fw-normal">Expires</dt>
+                <dd class="col-sm-9">
+                    @if (account.Expiry is { } expiry)
+                    {
+                        <span class="@(account.HasExpired ? "text-danger" : null)">
+                            @expiry.ToString("yyyy-MM-dd HH:mm") UTC
+                            @(account.HasExpired ? "(expired)" : null)
+                        </span>
+                    }
+                    else
+                    {
+                        <text>Never</text>
+                    }
+                </dd>
+                <dt class="col-sm-3 text-muted fw-normal">Last updated</dt>
+                <dd class="col-sm-9 mb-0">@Model.LastUpdate.ToString("yyyy-MM-dd HH:mm") UTC</dd>
+            </dl>
+        </div>
+
+        <div class="widget mb-4">
+            <h5 class="mb-3">Payments</h5>
+            @if (Model.Payments.Count == 0)
+            {
+                <p class="text-muted mb-0">This account has not paid anything.</p>
+            }
+            else
+            {
+                @* "Reserved", not "amount": litd's own comment on full_amount says it includes the fee
+                   limit and that the actual debit is usually lower. Calling it the amount paid would
+                   overstate what left the node. *@
+                <p class="text-muted">
+                    Each payment reserves its fee limit up front, so the amount actually debited is
+                    usually a little lower than what is reserved here.
+                </p>
+                <div class="table-responsive">
+                    <table class="table mb-0">
+                        <thead>
+                        <tr>
+                            <th>Payment hash</th>
+                            <th>State</th>
+                            <th class="text-end">Reserved</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var payment in Model.Payments)
+                        {
+                            <tr>
+                                <td class="text-break"><code>@payment.Hash</code></td>
+                                <td>@payment.State</td>
+                                <td class="text-end">@payment.ReservedSats.ToString("N0") sats</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+
+        <div class="widget">
+            <h5 class="mb-3">Invoices</h5>
+            @if (Model.InvoiceHashes.Count == 0)
+            {
+                <p class="text-muted mb-0">This account has not created any invoices.</p>
+            }
+            else
+            {
+                @* litd stores only the hash for an account's invoices - no amount, no state - so a
+                   table of one column is all there is to show. *@
+                <p class="text-muted">
+                    Settling one of these credits the account's balance. litd records only their hashes.
+                </p>
+                <ul class="list-unstyled mb-0">
+                    @foreach (var hash in Model.InvoiceHashes)
+                    {
+                        <li class="text-break"><code>@hash</code></li>
+                    }
+                </ul>
+            }
+        </div>
+    </div>
+</div>

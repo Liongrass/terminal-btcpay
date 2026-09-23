@@ -42,6 +42,7 @@ public class UILightningTerminalController(
     /// </summary>
     public const string SessionCreatedView = "SessionCreated";
 
+
     [HttpGet("")]
     public async Task<IActionResult> Index(CancellationToken cancellationToken)
     {
@@ -64,11 +65,30 @@ public class UILightningTerminalController(
             }
         }
 
+        var accounts = Array.Empty<AccountViewModel>();
+        string? accountsError = null;
+        if (status.Running)
+        {
+            try
+            {
+                accounts = (await client.ListAccountsAsync(cancellationToken))
+                    .Select(ToViewModel)
+                    .OrderBy(account => account.Display, StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+            }
+            catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
+            {
+                accountsError = ex is RpcException rpc ? LitdClient.Explain(rpc) : ex.Message;
+            }
+        }
+
         return View(new TerminalIndexViewModel
         {
             Status = status,
             Sessions = sessions,
             SessionsError = sessionsError,
+            Accounts = accounts,
+            AccountsError = accountsError,
             DockerDeployment = serverOptions.DockerDeployment,
             InstallCommand = fragment.InstallCommand
         });
@@ -252,6 +272,91 @@ public class UILightningTerminalController(
         }
         return RedirectToAction(nameof(Index));
     }
+
+    [HttpGet("accounts/new")]
+    public IActionResult NewAccount() => View(new NewAccountViewModel());
+
+    [HttpPost("accounts/new")]
+    public async Task<IActionResult> NewAccount(NewAccountViewModel model, CancellationToken cancellationToken)
+    {
+        var label = model.Label?.Trim();
+
+        if (AccountRules.LooksLikeAnAccountId(label))
+            ModelState.AddModelError(nameof(model.Label),
+                $"A label of {AccountRules.AccountIdHexLength} hex characters would be mistaken for an account ID.");
+
+        if (!ModelState.IsValid)
+            return View(model);
+
+        try
+        {
+            var expiry = model.Expiry is { } date ? AccountRules.EndOfDayUtc(date) : (DateTimeOffset?)null;
+
+            var account = await client.CreateAccountAsync(
+                (ulong)model.BalanceSats, expiry, label, cancellationToken);
+
+            TempData[WellKnownTempData.SuccessMessage] = $"Account {ToViewModel(account).Display} created.";
+            return RedirectToAction(nameof(Account), new { id = account.Id });
+        }
+        catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
+        {
+            ModelState.AddModelError(string.Empty,
+                ex is RpcException rpc ? LitdClient.Explain(rpc) : ex.Message);
+            return View(model);
+        }
+    }
+
+    [HttpGet("accounts/{id}")]
+    public async Task<IActionResult> Account(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var account = await client.AccountInfoAsync(id, cancellationToken);
+            return View(new AccountDetailViewModel
+            {
+                Account = ToViewModel(account),
+                LastUpdate = DateTimeOffset.FromUnixTimeSeconds(account.LastUpdate),
+                InvoiceHashes = account.Invoices.Select(invoice => Hex(invoice.Hash)).ToList(),
+                Payments = account.Payments
+                    .Select(payment => new AccountPaymentViewModel(
+                        Hex(payment.Hash), payment.State, payment.FullAmount))
+                    .ToList()
+            });
+        }
+        catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
+        {
+            TempData[WellKnownTempData.ErrorMessage] =
+                ex is RpcException rpc ? LitdClient.Explain(rpc) : ex.Message;
+            return RedirectToAction(nameof(Index));
+        }
+    }
+
+    [HttpPost("accounts/{id}/remove")]
+    public async Task<IActionResult> RemoveAccount(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.RemoveAccountAsync(id, cancellationToken);
+            TempData[WellKnownTempData.SuccessMessage] = "Account removed.";
+        }
+        catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
+        {
+            TempData[WellKnownTempData.ErrorMessage] =
+                $"Could not remove the account: {(ex is RpcException rpc ? LitdClient.Explain(rpc) : ex.Message)}";
+        }
+        return RedirectToAction(nameof(Index));
+    }
+
+    private static AccountViewModel ToViewModel(Litrpc.Account account) => new(
+        account.Id,
+        account.Label,
+        account.InitialBalance,
+        account.CurrentBalance,
+        // litd writes zero for an account that never expires.
+        account.ExpirationDate > 0 ? DateTimeOffset.FromUnixTimeSeconds(account.ExpirationDate) : null);
+
+    private static string Hex(Google.Protobuf.ByteString bytes) =>
+        Convert.ToHexString(bytes.ToByteArray()).ToLowerInvariant();
 
     [HttpGet("logs")]
     public IActionResult Logs()

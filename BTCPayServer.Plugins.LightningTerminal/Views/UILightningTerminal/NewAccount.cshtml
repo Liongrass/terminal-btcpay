@@ -1,0 +1,64 @@
+@model NewAccountViewModel
+@{
+    ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer["Create new account"]));
+}
+
+<div class="sticky-header">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb mb-1">
+            <li class="breadcrumb-item"><a asp-action="Index">Lightning Terminal</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Create new account</li>
+        </ol>
+    </nav>
+    <h2 class="my-1">@ViewData["Title"]</h2>
+</div>
+<partial name="_StatusMessage"/>
+
+<div class="row">
+    <div class="col-xl-8 col-xxl-constrain">
+        <p class="text-muted">
+            An account caps how much can be spent through it. Pair one with a Custodial session to hand
+            someone a budget rather than your node.
+        </p>
+
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="Label" class="form-label"></label>
+                <input asp-for="Label" class="form-control" placeholder="Shop till, contractor, kids…"/>
+                <div class="form-text">
+                    Optional, but has to be unique across accounts. Leave it empty and the account is
+                    known only by its ID.
+                </div>
+                <span asp-validation-for="Label" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="BalanceSats" class="form-label"></label>
+                <input asp-for="BalanceSats" type="number" min="0" class="form-control"/>
+                <div class="form-text">
+                    The most this account may ever spend. It is a ceiling, not a transfer &mdash; nothing
+                    moves out of your node until the account actually pays something.
+                </div>
+                <span asp-validation-for="BalanceSats" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Expiry" class="form-label"></label>
+                <input asp-for="Expiry" type="date" class="form-control"/>
+                <div class="form-text">Leave empty for an account that does not expire.</div>
+                <span asp-validation-for="Expiry" class="text-danger"></span>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">Create account</button>
+                <a asp-action="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section PageFootContent {
+    <partial name="_ValidationScriptsPartial"/>
+}

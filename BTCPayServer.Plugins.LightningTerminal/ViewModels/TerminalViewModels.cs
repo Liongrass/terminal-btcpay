@@ -27,6 +27,11 @@ public class TerminalIndexViewModel
     /// view, because the fragment now depends on the deployment's network - see LitdFragment.
     /// </summary>
     public required string InstallCommand { get; init; }
+
+    /// <summary>litd's accounts. Empty when it has none, or when listing them failed.</summary>
+    public IReadOnlyList<AccountViewModel> Accounts { get; init; } = [];
+
+    public string? AccountsError { get; init; }
 }
 
 public class TerminalSessionViewModel
@@ -129,4 +134,66 @@ public class SessionCreatedViewModel
     public required string MailboxServer { get; init; }
     public required string PairingPhrase { get; init; }
     public required string PairingUrl { get; init; }
+}
+
+/// <summary>One of litd's accounts as shown in the list on the plugin's landing screen.</summary>
+/// <param name="Id">litd's hex account id, which is how every other call addresses it.</param>
+/// <param name="Label">Optional and, when set, unique across accounts. Empty for an unlabelled one.</param>
+/// <param name="InitialBalanceSats">The ceiling it was created with.</param>
+/// <param name="CurrentBalanceSats">
+/// What is left to spend. Signed, because litd tracks it that way - a payment reserves its fee limit
+/// up front, so a balance can briefly read lower than the amount actually settled.
+/// </param>
+/// <param name="Expiry">When it stops working, or null for an account that never expires.</param>
+public record AccountViewModel(
+    string Id,
+    string Label,
+    ulong InitialBalanceSats,
+    long CurrentBalanceSats,
+    DateTimeOffset? Expiry)
+{
+    public string Display => string.IsNullOrWhiteSpace(Label) ? Id : Label;
+
+    public bool HasExpired => Expiry is { } expiry && expiry <= DateTimeOffset.UtcNow;
+}
+
+public class NewAccountViewModel
+{
+    /// <summary>
+    /// Optional, unique when set, and litd refuses one that could be mistaken for an account id -
+    /// sixteen hex characters exactly.
+    /// </summary>
+    [MaxLength(200)]
+    [Display(Name = "Label")]
+    public string? Label { get; set; }
+
+    [Range(0, 21_000_000_00000000)]
+    [Display(Name = "Starting balance (sats)")]
+    public long BalanceSats { get; set; }
+
+    /// <summary>
+    /// Null for an account that never expires, which is litd's zero and this form's default.
+    /// </summary>
+    [DataType(DataType.Date)]
+    [Display(Name = "Expires on")]
+    public DateTime? Expiry { get; set; }
+}
+
+/// <param name="Hash">lnd's payment hash, hex.</param>
+/// <param name="State">Whatever lnd calls it - litd passes the string through untouched.</param>
+/// <param name="ReservedSats">
+/// What the payment set aside, fee limit included. Deliberately not called "amount": litd's own
+/// comment notes the actual debit is usually lower, so presenting it as the sum paid would overstate it.
+/// </param>
+public record AccountPaymentViewModel(string Hash, string State, long ReservedSats);
+
+public class AccountDetailViewModel
+{
+    public required AccountViewModel Account { get; init; }
+    public required DateTimeOffset LastUpdate { get; init; }
+
+    /// <summary>Payment hashes only - litd records nothing else about an account's invoices.</summary>
+    public IReadOnlyList<string> InvoiceHashes { get; init; } = [];
+
+    public IReadOnlyList<AccountPaymentViewModel> Payments { get; init; } = [];
 }
