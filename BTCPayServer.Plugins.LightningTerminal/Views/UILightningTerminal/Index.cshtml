@@ -277,8 +277,7 @@
                     <thead>
                     <tr>
                         <th>Account</th>
-                        <th class="text-end">Remaining</th>
-                        <th class="text-end">Of</th>
+                        <th class="text-end">Balance</th>
                         <th>Expires</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -291,7 +290,6 @@
                                 <a asp-action="Account" asp-route-id="@account.Id">@account.Display</a>
                             </td>
                             <td class="text-end">@account.CurrentBalanceSats.ToString("N0") sats</td>
-                            <td class="text-end text-muted">@account.InitialBalanceSats.ToString("N0") sats</td>
                             <td>
                                 @if (account.Expiry is { } expiry)
                                 {
