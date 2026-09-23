@@ -64,6 +64,34 @@
         </div>
 
         <div class="widget mb-4">
+            <h5 class="mb-3">Macaroon</h5>
+            @if (Model.Macaroon is { } macaroon)
+            {
+                <p class="text-muted">
+                    This credential can spend up to the account's balance. It is not stored anywhere -
+                    revealing it again re-derives the same macaroon from the account's ID.
+                </p>
+                <div class="input-group clipboard-button" data-clipboard="@macaroon"
+                     data-clipboard-confirm="@StringLocalizer["Copied"]">
+                    <textarea class="form-control font-monospace" rows="4" readonly>@macaroon</textarea>
+                    <button type="button" class="btn btn-outline-secondary only-for-js">
+                        <vc:icon symbol="actions-copy"/>
+                    </button>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted">
+                    litd hands an account's macaroon over once, when the account is created. This bakes
+                    the same one again from the account's ID, so nothing has to be kept on disk.
+                </p>
+                <form method="post" asp-action="RevealAccountMacaroon" asp-route-id="@account.Id">
+                    <button type="submit" class="btn btn-secondary">Reveal macaroon</button>
+                </form>
+            }
+        </div>
+
+        <div class="widget mb-4">
             <h5 class="mb-3">Payments</h5>
             @if (Model.Payments.Count == 0)
             {

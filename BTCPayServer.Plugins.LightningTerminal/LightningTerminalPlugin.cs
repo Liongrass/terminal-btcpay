@@ -60,6 +60,8 @@ public class LightningTerminalPlugin : BaseBTCPayServerPlugin
         services.AddSingleton<LitdFragment>();
         services.AddSingleton<LightningBackendDetector>();
         services.AddSingleton<LitdClient>();
+        services.AddSingleton<LndClient>();
+        services.AddSingleton<AccountMacaroon>();
         services.AddSingleton<LitdStatusService>();
 
         // header-nav is the "Plugins" section of the main navigation; the partial hides itself from

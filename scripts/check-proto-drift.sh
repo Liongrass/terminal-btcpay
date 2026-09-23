@@ -40,6 +40,7 @@ check "$WORK_DIR/litd" "litrpc/lit-accounts.proto" "litrpc/lit-accounts.proto"
 echo "Fetching $LND_REPO@$LND_REF..."
 git clone --depth 1 --branch "$LND_REF" "$LND_REPO" "$WORK_DIR/lnd" --quiet
 check "$WORK_DIR/lnd" "lnrpc/stateservice.proto" "lnrpc/stateservice.proto"
+check "$WORK_DIR/lnd" "lnrpc/lightning.proto" "lnrpc/lightning.proto"
 
 if [ "$drifted" -ne 0 ]; then
   echo ""

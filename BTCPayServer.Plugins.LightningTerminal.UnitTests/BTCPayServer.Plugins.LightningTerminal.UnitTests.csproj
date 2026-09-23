@@ -16,6 +16,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Reference vectors produced by gopkg.in/macaroon.v2, the library lnd itself uses. Regenerate
+         with scripts/macaroon-vectors.go when the format or the cases need to change. -->
+    <None Include="macaroon-vectors.json" CopyToOutputDirectory="PreserveNewest"/>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\BTCPayServer.Plugins.LightningTerminal\BTCPayServer.Plugins.LightningTerminal.csproj" />
   </ItemGroup>
 

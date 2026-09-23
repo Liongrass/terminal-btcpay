@@ -28,6 +28,7 @@ public class UILightningTerminalController(
     LitdClient client,
     LitdPaths paths,
     LitdFragment fragment,
+    AccountMacaroon accountMacaroon,
     BTCPayServerOptions serverOptions) : Controller
 {
     /// <summary>
@@ -311,17 +312,7 @@ public class UILightningTerminalController(
     {
         try
         {
-            var account = await client.AccountInfoAsync(id, cancellationToken);
-            return View(new AccountDetailViewModel
-            {
-                Account = ToViewModel(account),
-                LastUpdate = DateTimeOffset.FromUnixTimeSeconds(account.LastUpdate),
-                InvoiceHashes = account.Invoices.Select(invoice => Hex(invoice.Hash)).ToList(),
-                Payments = account.Payments
-                    .Select(payment => new AccountPaymentViewModel(
-                        Hex(payment.Hash), payment.State, payment.FullAmount))
-                    .ToList()
-            });
+            return View(await DetailViewModelAsync(id, macaroon: null, cancellationToken));
         }
         catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
         {
@@ -329,6 +320,48 @@ public class UILightningTerminalController(
                 ex is RpcException rpc ? LitdClient.Explain(rpc) : ex.Message;
             return RedirectToAction(nameof(Index));
         }
+    }
+
+    /// <summary>
+    /// Re-derives this account's macaroon and shows it.
+    /// </summary>
+    /// <remarks>
+    /// A POST, even though nothing is stored: it hands out a credential that can spend, and a GET
+    /// would put that in browser history, prefetchers and link previews. Nothing is persisted - litd
+    /// returns an account's macaroon only once, at creation, so this bakes it again from the account's
+    /// own ID. See AccountMacaroon for why litd's BakeSuperMacaroon RPC is not the shortcut it looks.
+    /// </remarks>
+    [HttpPost("accounts/{id}/macaroon")]
+    public async Task<IActionResult> RevealAccountMacaroon(string id, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var macaroon = await accountMacaroon.BakeAsync(id, cancellationToken);
+            return View(nameof(Account), await DetailViewModelAsync(id, macaroon, cancellationToken));
+        }
+        catch (Exception ex) when (ex is RpcException or LitdNotReadyException or FormatException)
+        {
+            TempData[WellKnownTempData.ErrorMessage] =
+                $"Could not bake the macaroon: {(ex is RpcException rpc ? LitdClient.Explain(rpc) : ex.Message)}";
+            return RedirectToAction(nameof(Account), new { id });
+        }
+    }
+
+    private async Task<AccountDetailViewModel> DetailViewModelAsync(
+        string id, string? macaroon, CancellationToken cancellationToken)
+    {
+        var account = await client.AccountInfoAsync(id, cancellationToken);
+        return new AccountDetailViewModel
+        {
+            Account = ToViewModel(account),
+            LastUpdate = DateTimeOffset.FromUnixTimeSeconds(account.LastUpdate),
+            InvoiceHashes = account.Invoices.Select(invoice => Hex(invoice.Hash)).ToList(),
+            Payments = account.Payments
+                .Select(payment => new AccountPaymentViewModel(
+                    Hex(payment.Hash), payment.State, payment.FullAmount))
+                .ToList(),
+            Macaroon = macaroon
+        };
     }
 
     [HttpPost("accounts/{id}/remove")]

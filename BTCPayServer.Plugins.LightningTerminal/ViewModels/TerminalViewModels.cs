@@ -196,4 +196,10 @@ public class AccountDetailViewModel
     public IReadOnlyList<string> InvoiceHashes { get; init; } = [];
 
     public IReadOnlyList<AccountPaymentViewModel> Payments { get; init; } = [];
+
+    /// <summary>
+    /// The account's macaroon, hex encoded, once the operator has asked for it. Null the rest of the
+    /// time - it is re-derived on request and never stored, so the page does not carry it by default.
+    /// </summary>
+    public string? Macaroon { get; init; }
 }

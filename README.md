@@ -147,6 +147,18 @@ budget rather than your node.
 an expiry date that defaults to never. Each account's page shows what is left of its balance, its
 payment history and the hashes of any invoices it created.
 
+**Reveal macaroon** shows an account's hex macaroon. litd hands one over exactly once, in
+`CreateAccountResponse`, and has no RPC to fetch it again — so this re-derives it rather than storing
+it, following litd's own recipe: bake against a root key derived from the account's ID with litd's
+account permission set (`lncli bakemacaroon`), then narrow the result with the
+`lnd-custom account <id>` caveat (`lncli restrictmacaroon`). The bake goes to the bundled LND over
+gRPC; btcpayserver-docker already mounts its data directory into the BTCPay container, so no fragment
+change is needed.
+
+> litd's own `BakeSuperMacaroon` RPC takes the same root key suffix and looks like the shortcut for
+> this. It is not. It bakes with `permsMgr.ActivePermissions` and no caveats, and an account is scoped
+> by its caveat alone — so it returns a full-node super macaroon that litd accepts happily.
+
 Two things litd's own semantics dictate in that view:
 
 - A payment's **reserved** amount includes the fee limit it set aside, and litd notes the actual debit

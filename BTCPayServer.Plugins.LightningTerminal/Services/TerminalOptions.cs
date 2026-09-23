@@ -22,6 +22,9 @@ public class TerminalOptions
             int.TryParse(configuration["terminallitrpcport"], out var port) ? port : DefaultRpcPort,
             configuration["terminallitnetwork"] ?? serverOptions.NetworkType.ToString())
     {
+        LndDataDirectory = configuration["terminallnddatadir"] ?? DefaultLndDataDirectory;
+        LndRpcHost = configuration["terminallndrpchost"] ?? LightningBackendDetector.BundledLndHost;
+        LndRpcPort = int.TryParse(configuration["terminallndrpcport"], out var lndPort) ? lndPort : DefaultLndRpcPort;
     }
 
     internal TerminalOptions(string litDataDirectory, string rpcHost, int rpcPort, string network)
@@ -30,7 +33,33 @@ public class TerminalOptions
         RpcHost = rpcHost;
         RpcPort = rpcPort;
         Network = network.ToLowerInvariant();
+        LndDataDirectory = DefaultLndDataDirectory;
+        LndRpcHost = LightningBackendDetector.BundledLndHost;
+        LndRpcPort = DefaultLndRpcPort;
     }
+
+    /// <summary>
+    /// Where btcpayserver-docker mounts the bundled LND's data directory into the BTCPay container.
+    /// Not this plugin's doing - bitcoin-lnd.yml puts it there so BTCPay can drive the internal node,
+    /// and BTCPAY_BTCLIGHTNING points at the same path.
+    /// </summary>
+    public const string DefaultLndDataDirectory = "/etc/lnd_bitcoin";
+
+    /// <summary>LND's gRPC port. bitcoin-lnd.yml passes rpclisten=lnd_bitcoin:10009.</summary>
+    public const int DefaultLndRpcPort = 10009;
+
+    /// <summary>The bundled LND's data directory, holding its admin macaroon and TLS certificate.</summary>
+    public string LndDataDirectory { get; }
+
+    public string LndRpcHost { get; }
+
+    public int LndRpcPort { get; }
+
+    /// <summary>LND's admin macaroon, which is what lets this plugin bake account macaroons.</summary>
+    public string LndMacaroonFile => Path.Combine(LndDataDirectory, "admin.macaroon");
+
+    /// <summary>LND's self-signed TLS certificate.</summary>
+    public string LndTlsCertificateFile => Path.Combine(LndDataDirectory, "tls.cert");
 
     /// <summary>litd's <c>--lit-dir</c> (<c>lnd_lit_datadir</c>) as mounted into this container.</summary>
     public string LitDataDirectory { get; }
