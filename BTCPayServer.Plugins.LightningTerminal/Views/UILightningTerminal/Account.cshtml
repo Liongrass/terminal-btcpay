@@ -67,9 +67,15 @@
             <h5 class="mb-3">Macaroon</h5>
             @if (Model.Macaroon is { } macaroon)
             {
+                @* Accurate, not merely reassuring. litd's account interceptor whitelists RPCs -
+                   checkIncomingRequest returns ErrNotSupportedWithAccounts for anything without a
+                   checker - and blanks node-level reads in the ones it allows (WalletBalance,
+                   GetTransactions, ListPeers and the channel lists all go through empty rewriters).
+                   Taking the macaroon straight to LND does not widen it either: lnd refuses a
+                   macaroon whose custom caveat has no middleware registered to handle it. *@
                 <p class="text-muted">
-                    This credential can spend up to the account's balance. It is not stored anywhere -
-                    revealing it again re-derives the same macaroon from the account's ID.
+                    This macaroon can only see and spend this account's balance, receive payments, but
+                    not access other functions of the node.
                 </p>
                 <div class="input-group clipboard-button" data-clipboard="@macaroon"
                      data-clipboard-confirm="@StringLocalizer["Copied"]">
