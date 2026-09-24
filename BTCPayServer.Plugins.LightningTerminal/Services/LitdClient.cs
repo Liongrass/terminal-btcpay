@@ -1,6 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using Grpc.Core;
 using Grpc.Net.Client;
+using Grpc.Net.Client.Web;
 using Litrpc;
 using Lnrpc;
 
@@ -19,11 +20,19 @@ public class LitdNotReadyException(string message) : Exception(message);
 /// the same trust anchor litcli uses. The channel is cached per certificate, so litd regenerating an
 /// expired certificate transparently rebuilds it.
 /// </remarks>
-public sealed class LitdClient(TerminalOptions options, LitdPaths paths) : IDisposable
+public sealed class LitdClient(TerminalOptions options, LitdPaths paths, LitdConnection connection) : IDisposable
 {
     private readonly Lock _lock = new();
     private GrpcChannel? _channel;
-    private string? _channelCertificateThumbprint;
+
+    /// <summary>
+    /// What the cached channel was built for - litd's certificate thumbprint for a headless install,
+    /// or a marker for the upstream one. A deployment can switch between the two under a running
+    /// process, so the channel has to be rebuilt rather than reused when that happens.
+    /// </summary>
+    private string? _channelKey;
+
+    private const string UpstreamChannelKey = "upstream-plaintext";
 
     public async Task<SubServerStatusResp> GetSubServerStatusAsync(CancellationToken cancellationToken)
     {
@@ -155,6 +164,9 @@ public sealed class LitdClient(TerminalOptions options, LitdPaths paths) : IDisp
 
     private Metadata Authenticated()
     {
+        if (connection.Describe().Mode is LitdConnectionMode.Upstream)
+            return BasicAuthenticated();
+
         var macaroonFile = paths.MacaroonFile
             ?? throw new LitdNotReadyException(
                 "litd has not written its macaroon yet, so it cannot authenticate this request. " +
@@ -173,7 +185,60 @@ public sealed class LitdClient(TerminalOptions options, LitdPaths paths) : IDisp
         return new Metadata { { "macaroon", Convert.ToHexString(macaroon).ToLowerInvariant() } };
     }
 
-    private GrpcChannel GetChannel()
+    /// <summary>
+    /// Authenticates an upstream install with litd's UI password instead of a macaroon.
+    /// </summary>
+    /// <remarks>
+    /// litd's proxy converts a matching basic-auth header into whichever macaroon the called method
+    /// needs, so the password stands in for a file this container cannot see. It doubles the password
+    /// as the username because there is no username - see rpcProxy's own comment on basicAuth.
+    /// Only works while litd's UI is enabled, which is exactly the install this path is for.
+    /// </remarks>
+    private Metadata BasicAuthenticated()
+    {
+        var password = connection.UiPassword
+            ?? throw new LitdNotReadyException(
+                "This litd was installed with BTCPay's own fragment, which keeps its macaroon out of " +
+                "reach of this plugin. Enter litd's UI password below and it can connect instead.");
+
+        var credential = Convert.ToBase64String(
+            System.Text.Encoding.UTF8.GetBytes($"{password}:{password}"));
+        return new Metadata { { "authorization", $"Basic {credential}" } };
+    }
+
+    private GrpcChannel GetChannel() =>
+        connection.Describe().Mode is LitdConnectionMode.Upstream ? GetUpstreamChannel() : GetHeadlessChannel();
+
+    /// <summary>
+    /// litd over its plaintext listener, as gRPC-Web.
+    /// </summary>
+    /// <remarks>
+    /// Not plain gRPC: litd serves that port from a bare http.Server with no h2c wrapper, so there is
+    /// no plaintext HTTP/2 to speak. gRPC-Web rides HTTP/1.1, which is what litd's own browser UI uses
+    /// against the same port. Everything here crosses the deployment's internal Docker network in the
+    /// clear, password included - the cost of an install whose credentials this container cannot read.
+    /// </remarks>
+    private GrpcChannel GetUpstreamChannel()
+    {
+        lock (_lock)
+        {
+            if (_channel is not null && _channelKey == UpstreamChannelKey)
+                return _channel;
+
+            _channel?.Dispose();
+            _channelKey = UpstreamChannelKey;
+            _channel = GrpcChannel.ForAddress(
+                $"http://{options.RpcHost}:{options.UpstreamHttpPort}",
+                new GrpcChannelOptions
+                {
+                    HttpHandler = new GrpcWebHandler(GrpcWebMode.GrpcWeb, new HttpClientHandler()),
+                    DisposeHttpClient = true
+                });
+            return _channel;
+        }
+    }
+
+    private GrpcChannel GetHeadlessChannel()
     {
         var certificateFile = paths.TlsCertificateFile
             ?? throw new LitdNotReadyException(
@@ -192,14 +257,14 @@ public sealed class LitdClient(TerminalOptions options, LitdPaths paths) : IDisp
 
         lock (_lock)
         {
-            if (_channel is not null && _channelCertificateThumbprint == certificate.Thumbprint)
+            if (_channel is not null && _channelKey == certificate.Thumbprint)
             {
                 certificate.Dispose();
                 return _channel;
             }
 
             _channel?.Dispose();
-            _channelCertificateThumbprint = certificate.Thumbprint;
+            _channelKey = certificate.Thumbprint;
             _channel = GrpcChannel.ForAddress($"https://{options.RpcHost}:{options.RpcPort}", new GrpcChannelOptions
             {
                 HttpHandler = new SocketsHttpHandler

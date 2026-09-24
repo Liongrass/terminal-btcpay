@@ -57,6 +57,8 @@ public class LightningTerminalPlugin : BaseBTCPayServerPlugin
     {
         services.AddSingleton<TerminalOptions>();
         services.AddSingleton<LitdPaths>();
+        services.AddSettingsAccessor<LightningTerminalSettings>();
+        services.AddSingleton<LitdConnection>();
         services.AddSingleton<LitdFragment>();
         services.AddSingleton<LightningBackendDetector>();
         services.AddSingleton<LitdClient>();

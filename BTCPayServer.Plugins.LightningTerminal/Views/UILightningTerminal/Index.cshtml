@@ -3,15 +3,17 @@
     ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer["Lightning Terminal"]));
 
     var status = Model.Status;
-    var (dot, headline) = !status.Installed
-        ? status.UpstreamOnly
-            ? ("pending", "Installed outside this plugin")
-            : ("disabled", "Not installed")
-        : status.Healthy
-            ? ("enabled", "Running")
-            : status.Running
-                ? ("pending", "Running with errors")
-                : ("disabled", "Installed, but not running");
+    // NeedsUiPassword first: litd is up, this plugin just has no credential for it yet, which reads
+    // differently from litd being down.
+    var (dot, headline) = status.NeedsUiPassword
+        ? ("pending", "Running, not connected")
+        : !status.Installed
+            ? ("disabled", "Not installed")
+            : status.Healthy
+                ? ("enabled", "Running")
+                : status.Running
+                    ? ("pending", "Running with errors")
+                    : ("disabled", "Installed, but not running");
 }
 
 <div class="sticky-header">
@@ -54,11 +56,25 @@
         <div class="alert alert-danger mt-3 mb-0">@status.Error</div>
     }
 
-    @if (!status.Installed)
+    @if (status.NeedsUiPassword)
     {
         <hr/>
-        @* Only when there is no litd here at all. A deployment on the upstream fragment already has it,
-           so this would be pitching something they are running. *@
+        <div class="alert alert-info mb-3">
+            <strong class="d-block mb-1">litd is running, installed by BTCPay's own fragment.</strong>
+            That fragment keeps litd's macaroon in a volume this plugin cannot read, so it needs litd's
+            web UI password instead before it can report on sessions, accounts or subsystems.
+        </div>
+        <a asp-action="Settings" class="btn btn-primary">Connect to litd</a>
+        <p class="text-muted small mb-0 mt-3">
+            Prefer not to store the password? <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Switch">Switch
+            to this plugin's fragment</a> instead &mdash; it mounts litd's macaroon, talks TLS, and keeps
+            your accounts, sessions and history.
+        </p>
+    }
+    else if (!status.Installed)
+    {
+        <hr/>
+        @* Only when there is no litd here at all - an upstream install is handled above. *@
         @if (status.NotFound)
         {
             <p class="text-muted">
@@ -71,28 +87,7 @@
             </p>
         }
 
-        @if (status.UpstreamOnly)
-        {
-            <div class="alert alert-info">
-                <strong>litd is already running here, installed by BTCPay's own fragment.</strong>
-                <span class="d-block mt-1">
-                    That version serves litd's web UI at
-                    <a href="@status.UpstreamUrl" target="_blank" rel="noreferrer noopener">@status.UpstreamUrl</a>,
-                    behind the UI password in <code>secrets/lit_password</code> on your host. It does not
-                    expose litd to this plugin, so nothing below can report on it.
-                </span>
-            </div>
-            <p class="text-muted">
-                Switching to this plugin's fragment keeps litd's data - accounts, sessions and history all
-                carry over - and turns the web UI off. In exchange there is no UI password to protect, and
-                litd's <code>/lit/</code> and gRPC endpoints stop being served on your public BTCPay
-                hostname; you manage the node from here and from Terminal on the web instead.
-            </p>
-            <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Switch" class="btn btn-primary">
-                Switch to the headless install
-            </a>
-        }
-        else if (status.Backend.Blocker is { } blocker)
+        @if (status.Backend.Blocker is { } blocker)
         {
             <div class="alert alert-danger mb-0">
                 <strong class="d-block mb-1">Lightning Terminal cannot be installed on this deployment.</strong>
@@ -130,7 +125,7 @@
     }
 </div>
 
-@if (status.Installed)
+@if (status.Installed && !status.NeedsUiPassword)
 {
     <div class="widget mb-4">
         <h5 class="mb-3">Subsystems</h5>
@@ -332,17 +327,40 @@
                     Download litd logs
                 </button>
             }
-            <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Uninstall" class="btn btn-outline-secondary">
-                Uninstall litd
-            </a>
-            <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Wipe" class="btn btn-outline-danger">
-                Wipe litd data
-            </a>
+            @* Uninstall and wipe drive this plugin's own fragment by name, so they would do nothing
+               useful against an install that BTCPay's fragment put here. *@
+            @if (status.UpstreamOnly)
+            {
+                <a asp-action="Settings" class="btn btn-outline-secondary">Connection settings</a>
+                <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Switch" class="btn btn-outline-secondary">
+                    Switch to the headless install
+                </a>
+            }
+            else
+            {
+                <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Uninstall" class="btn btn-outline-secondary">
+                    Uninstall litd
+                </a>
+                <a asp-action="Instructions" asp-route-operation="@TerminalOperation.Wipe" class="btn btn-outline-danger">
+                    Wipe litd data
+                </a>
+            }
         </div>
-        <p class="text-muted small mb-0 mt-3">
-            Uninstalling removes the <code>litd</code> container but keeps its data, so re-installing later
-            picks up right where you left off. Wiping destroys that data permanently. Neither touches LND
-            itself, its channels or its funds.
-        </p>
+        @if (status.UpstreamOnly)
+        {
+            <p class="text-muted small mb-0 mt-3">
+                litd here came from BTCPay Server's own fragment, so this plugin does not manage its
+                installation. Switching moves it to this plugin's fragment, keeping accounts, sessions
+                and history, and replaces the stored password with a mounted macaroon over TLS.
+            </p>
+        }
+        else
+        {
+            <p class="text-muted small mb-0 mt-3">
+                Uninstalling removes the <code>litd</code> container but keeps its data, so re-installing
+                later picks up right where you left off. Wiping destroys that data permanently. Neither
+                touches LND itself, its channels or its funds.
+            </p>
+        }
     </div>
 }

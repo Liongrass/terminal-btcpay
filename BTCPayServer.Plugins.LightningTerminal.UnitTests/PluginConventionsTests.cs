@@ -50,6 +50,7 @@ public class PluginConventionsTests
     [InlineData(nameof(UILightningTerminalController.NewSession))]
     [InlineData(nameof(UILightningTerminalController.NewAccount))]
     [InlineData(nameof(UILightningTerminalController.Account))]
+    [InlineData(nameof(UILightningTerminalController.Settings))]
     public void EveryViewReturningActionHasAViewUnderItsControllerDirectory(string action)
     {
         var expected = $"{ViewDirectoryFor<UILightningTerminalController>()}{action}.cshtml";

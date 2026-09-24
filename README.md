@@ -57,7 +57,33 @@ prompts when it finds legacy kvdb files, so a fresh install never sees that prom
 switching from a long-lived upstream install that predates v0.17, litd will stop at the migration
 prompt on first start — its log says exactly which flag approves it.
 
-If you already run the stock fragment, the plugin detects it and offers to switch.
+## If you already run BTCPay's own fragment
+
+The plugin works with it, without changing anything on the deployment — but it has to connect
+differently, because that fragment gives it neither of the things the headless one does:
+
+- **No macaroon.** It does not mount `lnd_lit_datadir` into the BTCPay container, so there is no
+  `lit.macaroon` to read.
+- **No TLS port.** It never sets `--httpslisten`, which litd defaults to `127.0.0.1:8443` — loopback
+  inside litd's own container, unreachable from BTCPay's.
+
+What it does leave reachable is litd's plaintext listener on `lnd_lit:8080`, the one nginx proxies the
+web UI to. litd's proxy accepts **HTTP basic auth** there while its UI is enabled and resolves the
+right macaroon itself, so **litd's UI password stands in for the macaroon file**. Enter it under
+**Connection settings** and everything but log download works.
+
+Two consequences worth knowing:
+
+- **That connection is not encrypted.** litd offers no TLS port on the Docker network under this
+  fragment, so the password and every call cross it in the clear. Nothing leaves the deployment, and it
+  is the same port litd already serves its UI on — but it is plaintext.
+- **Logs are unavailable.** The log is a file in the unmounted data directory and litd has no log RPC.
+
+Switching to this plugin's fragment removes both: it mounts the macaroon, talks TLS, and keeps your
+accounts, sessions and history. The plugin offers that as an alternative rather than a requirement.
+
+Technically this path is gRPC-Web rather than gRPC — litd serves that port from a bare `http.Server`
+with no `h2c` wrapper, so there is no plaintext HTTP/2 to speak.
 
 ## How it talks to litd
 

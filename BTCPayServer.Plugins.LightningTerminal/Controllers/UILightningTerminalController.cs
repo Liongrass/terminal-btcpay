@@ -1,5 +1,6 @@
 using BTCPayServer.Abstractions.Constants;
 using BTCPayServer.Abstractions.Extensions;
+using BTCPayServer.Abstractions.Contracts;
 using BTCPayServer.Client;
 using BTCPayServer.Configuration;
 using BTCPayServer.Plugins.LightningTerminal.Services;
@@ -29,6 +30,8 @@ public class UILightningTerminalController(
     LitdPaths paths,
     LitdFragment fragment,
     AccountMacaroon accountMacaroon,
+    LitdConnection connection,
+    ISettingsRepository settingsRepository,
     BTCPayServerOptions serverOptions) : Controller
 {
     /// <summary>
@@ -390,6 +393,55 @@ public class UILightningTerminalController(
 
     private static string Hex(Google.Protobuf.ByteString bytes) =>
         Convert.ToHexString(bytes.ToByteArray()).ToLowerInvariant();
+
+    /// <summary>
+    /// Collects litd's UI password, which an upstream install needs in place of a macaroon.
+    /// </summary>
+    [HttpGet("settings")]
+    public IActionResult Settings()
+    {
+        var info = connection.Describe();
+        return View(new TerminalSettingsViewModel
+        {
+            HasUiPassword = info.HasUiPassword,
+            UpstreamUrl = info.UpstreamUrl
+        });
+    }
+
+    [HttpPost("settings")]
+    public async Task<IActionResult> Settings(TerminalSettingsViewModel model)
+    {
+        var settings = await settingsRepository.GetSettingAsync<LightningTerminalSettings>()
+                       ?? new LightningTerminalSettings();
+
+        // An empty box leaves the stored password alone rather than clearing it - the form never
+        // echoes it back, so submitting the page for any other reason would otherwise wipe it.
+        var submitted = model.UiPassword?.Trim();
+        if (!string.IsNullOrEmpty(submitted))
+        {
+            settings.UiPassword = submitted;
+            await settingsRepository.UpdateSetting(settings);
+            TempData[WellKnownTempData.SuccessMessage] = "Password saved.";
+        }
+        else
+        {
+            TempData[WellKnownTempData.SuccessMessage] = "Nothing changed.";
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [HttpPost("settings/forget")]
+    public async Task<IActionResult> ForgetUiPassword()
+    {
+        var settings = await settingsRepository.GetSettingAsync<LightningTerminalSettings>()
+                       ?? new LightningTerminalSettings();
+        settings.UiPassword = null;
+        await settingsRepository.UpdateSetting(settings);
+
+        TempData[WellKnownTempData.SuccessMessage] = "Password forgotten.";
+        return RedirectToAction(nameof(Settings));
+    }
 
     [HttpGet("logs")]
     public IActionResult Logs()

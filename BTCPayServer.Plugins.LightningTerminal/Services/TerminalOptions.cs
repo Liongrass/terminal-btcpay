@@ -80,6 +80,18 @@ public class TerminalOptions
     /// </remarks>
     public const int DefaultRpcPort = 8443;
 
+    /// <summary>
+    /// litd's <c>--insecure-httplisten</c> port, which btcpayserver-docker's own fragment binds to the
+    /// Docker network so nginx can proxy the web UI to it.
+    /// </summary>
+    /// <remarks>
+    /// Only used for an upstream install. This plugin's own fragment opens no plaintext port at all.
+    /// </remarks>
+    public const int DefaultUpstreamHttpPort = 8080;
+
+    /// <summary>litd's plaintext port on an upstream install.</summary>
+    public int UpstreamHttpPort { get; } = DefaultUpstreamHttpPort;
+
     /// <summary>Compose service name of the litd container, which doubles as its DNS name.</summary>
     public string RpcHost { get; }
 

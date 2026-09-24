@@ -203,3 +203,16 @@ public class AccountDetailViewModel
     /// </summary>
     public string? Macaroon { get; init; }
 }
+
+/// <summary>The one setting this plugin has: litd's UI password, for an upstream install.</summary>
+public class TerminalSettingsViewModel
+{
+    [Display(Name = "litd UI password")]
+    public string? UiPassword { get; set; }
+
+    /// <summary>True when a password is already stored, so the form can say so without echoing it.</summary>
+    public bool HasUiPassword { get; init; }
+
+    /// <summary>Where the upstream install serves its web UI, for pointing the operator at it.</summary>
+    public Uri? UpstreamUrl { get; init; }
+}

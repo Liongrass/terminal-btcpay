@@ -52,6 +52,9 @@
     -->
     <PackageReference Include="Grpc.Tools" Version="2.82.0" PrivateAssets="All" />
     <PackageReference Include="Grpc.Net.Client" Version="2.80.0" />
+    <!-- litd's plaintext listener is a bare http.Server with no h2c, so an upstream install is
+         reachable only over gRPC-Web on HTTP/1.1. -->
+    <PackageReference Include="Grpc.Net.Client.Web" Version="2.80.0" />
     <PackageReference Include="Google.Protobuf" Version="3.35.1" />
     <Protobuf Include="Protos\**\*.proto" GrpcServices="Client" ProtoRoot="Protos" />
   </ItemGroup>

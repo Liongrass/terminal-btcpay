@@ -18,8 +18,8 @@ public record SubServer(string Name, bool Disabled, bool Running, string Error, 
 
 /// <summary>Everything the plugin can tell an administrator about litd on this deployment.</summary>
 /// <param name="Installed">
-/// litd's data directory is mounted into this container, so the generated fragment is part of the
-/// running Compose stack.
+/// litd is on this deployment, by either fragment. Not the same as reachable - an upstream install
+/// still needs a UI password before anything can be asked of it.
 /// </param>
 /// <param name="Running">litd answered a gRPC call.</param>
 /// <param name="Backend">The Lightning implementation this deployment runs, and whether litd can use it.</param>
@@ -31,6 +31,7 @@ public record SubServer(string Name, bool Disabled, bool Running, string Error, 
 /// Where litd's web UI is served, when this deployment looks like it runs btcpayserver-docker's own
 /// Lightning Terminal fragment instead of the one this plugin generates. Null otherwise.
 /// </param>
+/// <param name="Connection">Which litd install was found, and whether it can be talked to.</param>
 public record LitdStatus(
     bool Installed,
     bool Running,
@@ -39,16 +40,20 @@ public record LitdStatus(
     WalletState? LndState,
     string? Error,
     bool LogAvailable,
-    Uri? UpstreamUrl)
+    Uri? UpstreamUrl,
+    LitdConnectionInfo Connection)
 {
     /// <summary>True once litd is up and nothing it is running is in an error state.</summary>
     public bool Healthy => Running && Error is null && !SubServers.Any(s => s.HasError);
 
     /// <summary>
-    /// litd is on this deployment, but through the upstream fragment, so it is not reachable by this
-    /// plugin and the two fragments would collide if both were selected.
+    /// litd is on this deployment through btcpayserver-docker's own fragment rather than this
+    /// plugin's. Still reachable - over the plaintext listener, once a UI password is supplied.
     /// </summary>
-    public bool UpstreamOnly => !Installed && UpstreamUrl is not null;
+    public bool UpstreamOnly => Connection.Mode is LitdConnectionMode.Upstream;
+
+    /// <summary>litd is here but the plugin has no credential for it yet.</summary>
+    public bool NeedsUiPassword => Connection.NeedsUiPassword;
 
     /// <summary>
     /// No litd on this deployment at all, by either fragment - the only state in which there is
@@ -59,31 +64,24 @@ public record LitdStatus(
     /// this plugin just cannot see into it, and pitching litd to someone already running it reads as a
     /// bug. Exactly one of <see cref="Installed"/>, <see cref="UpstreamOnly"/> and this is ever true.
     /// </remarks>
-    public bool NotFound => !Installed && UpstreamUrl is null;
+    public bool NotFound => Connection.Mode is LitdConnectionMode.None;
 }
 
 public class LitdStatusService(
     LitdClient client,
     LitdPaths paths,
     LightningBackendDetector backendDetector,
-    IOptions<ExternalServicesOptions> externalServices)
+    LitdConnection connection)
 {
-    /// <summary>
-    /// The name btcpayserver-docker's own Lightning Terminal fragment registers in
-    /// <c>BTCPAY_EXTERNALSERVICES</c>. Its presence is the only host-free signal that the upstream
-    /// fragment - rather than this plugin's - is what put litd on this deployment.
-    /// </summary>
-    private const string UpstreamExternalServiceName = "Lightning Terminal";
-
     public async Task<LitdStatus> GetStatusAsync(CancellationToken cancellationToken)
     {
         var backend = backendDetector.Detect();
-        var installed = paths.DataDirectoryMounted;
-        var logAvailable = paths.LogFile is not null;
-        externalServices.Value.OtherExternalServices.TryGetValue(UpstreamExternalServiceName, out var upstreamUrl);
+        var info = connection.Describe();
+        var installed = info.Mode is not LitdConnectionMode.None;
+        var logAvailable = info.CanReadLogs && paths.LogFile is not null;
 
         if (!installed)
-            return new LitdStatus(false, false, backend, [], null, null, false, upstreamUrl);
+            return new LitdStatus(false, false, backend, [], null, null, false, info.UpstreamUrl, info);
 
         try
         {
@@ -101,19 +99,19 @@ public class LitdStatusService(
             {
             }
 
-            return new LitdStatus(true, true, backend, subServers, lndState, null, logAvailable, upstreamUrl);
+            return new LitdStatus(true, true, backend, subServers, lndState, null, logAvailable, info.UpstreamUrl, info);
         }
         catch (RpcException ex)
         {
-            return new LitdStatus(true, false, backend, [], null, LitdClient.Explain(ex), logAvailable, upstreamUrl);
+            return new LitdStatus(true, false, backend, [], null, LitdClient.Explain(ex), logAvailable, info.UpstreamUrl, info);
         }
         catch (LitdNotReadyException ex)
         {
-            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, upstreamUrl);
+            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, info.UpstreamUrl, info);
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
-            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, upstreamUrl);
+            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, info.UpstreamUrl, info);
         }
     }
 
