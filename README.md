@@ -82,6 +82,13 @@ Two consequences worth knowing:
 Switching to this plugin's fragment removes both: it mounts the macaroon, talks TLS, and keeps your
 accounts, sessions and history. The plugin offers that as an alternative rather than a requirement.
 
+**The two fragments cannot both be selected.** Each declares an image for the `lnd_lit` service, and
+the compose generator merges services with `SingleOrDefault(n => n.Children.ContainsKey("image"))` —
+two of them throws, so `btcpay-setup.sh` dies with an unhandled .NET stack trace. `btcpay-fragments`
+rolls the profile back, so nothing is left broken, but the message is useless. The install snippet
+therefore checks first and refuses with the removal command rather than letting you hit that; **Switch**
+is the path that removes BTCPay's fragment and adds this one in a single paste.
+
 Technically this path is gRPC-Web rather than gRPC — litd serves that port from a bare `http.Server`
 with no `h2c` wrapper, so there is no plaintext HTTP/2 to speak.
 

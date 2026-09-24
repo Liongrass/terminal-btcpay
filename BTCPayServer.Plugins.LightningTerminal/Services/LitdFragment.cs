@@ -138,21 +138,38 @@ public class LitdFragment(TerminalOptions options)
     /// brings the stack back up immediately, so BTCPay Server itself restarts partway through.
     /// </summary>
     /// <remarks>
+    /// Refuses outright if btcpayserver-docker's own Lightning Terminal fragment is still selected.
+    /// Both declare an image for <c>lnd_lit</c>, and the generator merges services with
+    /// <c>SingleOrDefault(n =&gt; n.Children.ContainsKey("image"))</c> - two of them throws, so
+    /// btcpay-setup.sh dies with an unhandled .NET stack trace rather than saying anything useful.
+    /// The check is read-only and costs nothing on a deployment that has no upstream fragment; it
+    /// stops before writing anything, so a refused run leaves no stray file behind. Removing a running
+    /// litd is the operator's call, not a side effect of a paste labelled "install" - the page offers
+    /// Switch for that, which does both halves deliberately.
+    /// </remarks>
+    /// <remarks>
     /// Every command here runs in a <c>( set -eu )</c> subshell. These are pasted into a root shell, so
     /// an unset <c>BTCPAY_BASE_DIRECTORY</c> - on a host that is not a btcpayserver-docker deployment -
     /// has to stop the block rather than resolve to a path under <c>/</c>. A subshell also means a
     /// failure never closes the operator's session the way a bare <c>exit</c> would.
     /// </remarks>
     public string InstallCommand =>
-        $"""
+        $$"""
         (
         set -eu
         . /etc/profile.d/btcpay-env.sh
-        cd "$BTCPAY_BASE_DIRECTORY/{FragmentDirectory}"
-        cat > {FileName} <<'LITD_FRAGMENT'
-        {Yaml}
+        if btcpay-fragments show | jq -e --arg f {{TerminalOptions.UpstreamFragmentName}} '.additionalFragments | index($f) != null' > /dev/null; then
+            echo "BTCPay Server's own Lightning Terminal fragment ({{TerminalOptions.UpstreamFragmentName}}) is already selected." >&2
+            echo "Two fragments cannot both define the lnd_lit container - the compose generator fails outright." >&2
+            echo "Remove it first, then run this again:" >&2
+            echo "    btcpay-fragments remove {{TerminalOptions.UpstreamFragmentName}}" >&2
+            exit 1
+        fi
+        cd "$BTCPAY_BASE_DIRECTORY/{{FragmentDirectory}}"
+        cat > {{FileName}} <<'LITD_FRAGMENT'
+        {{Yaml}}
         LITD_FRAGMENT
-        btcpay-fragments add {TerminalOptions.FragmentName}
+        btcpay-fragments add {{TerminalOptions.FragmentName}}
         )
         """;
 

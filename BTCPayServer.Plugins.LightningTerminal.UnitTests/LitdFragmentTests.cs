@@ -226,6 +226,49 @@ public class LitdFragmentTests
     }
 
     [Fact]
+    public void InstallRefusesWhileBtcpaysOwnFragmentIsSelected()
+    {
+        // Both fragments declare an image for lnd_lit, and the generator merges services with
+        // SingleOrDefault(n => n.Children.ContainsKey("image")) - two of them throws, so
+        // btcpay-setup.sh dies with an unhandled .NET stack trace instead of a usable message.
+        var install = Mainnet.InstallCommand;
+
+        Assert.Contains($"btcpay-fragments show", install);
+        Assert.Contains(TerminalOptions.UpstreamFragmentName, install);
+        Assert.Contains("exit 1", install);
+    }
+
+    [Fact]
+    public void InstallChecksBeforeItWritesAnything()
+    {
+        // A refused run must leave no stray fragment file behind, so the guard has to come before the
+        // redirect rather than after it.
+        var install = Mainnet.InstallCommand;
+
+        Assert.True(
+            install.IndexOf("btcpay-fragments show", StringComparison.Ordinal) <
+            install.IndexOf($"cat > {LitdFragment.FileName}", StringComparison.Ordinal),
+            "the upstream check has to run before the fragment file is written");
+    }
+
+    [Fact]
+    public void InstallNeverRemovesAnythingItself()
+    {
+        // Taking down a running litd is the operator's decision. Install refuses and names the command
+        // in its error text; Switch is the path that runs it, because that is what switching means.
+        // Matched on executed lines, since install quotes the command inside an echo.
+        var executed = Mainnet.InstallCommand
+            .Split('\n')
+            .Select(line => line.Trim())
+            .Where(line => line.StartsWith("btcpay-fragments", StringComparison.Ordinal))
+            .ToArray();
+
+        Assert.DoesNotContain(executed, line => line.StartsWith("btcpay-fragments remove", StringComparison.Ordinal));
+        Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", executed);
+        Assert.Contains($"btcpay-fragments remove {TerminalOptions.UpstreamFragmentName}", Mainnet.SwitchCommand);
+    }
+
+    [Fact]
     public void UninstallKeepsTheDataVolume()
     {
         Assert.Contains($"btcpay-fragments remove {TerminalOptions.FragmentName}", Mainnet.UninstallCommand);
