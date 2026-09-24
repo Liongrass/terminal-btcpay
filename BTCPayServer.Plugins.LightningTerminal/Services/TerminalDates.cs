@@ -28,6 +28,26 @@ namespace BTCPayServer.Plugins.LightningTerminal.Services;
 public static class TerminalDates
 {
     public const string DateFormat = "yyyy'/'MM'/'dd";
+
+    /// <summary>
+    /// The format a date is typed and posted in: ISO, unambiguous, and the same thing
+    /// <c>&lt;input type="date"&gt;</c> would have submitted.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately not <see cref="DateFormat"/>. Read-only dates carry the plugin's house style;
+    /// a value that travels over the wire and gets parsed again should be ISO 8601.
+    /// </remarks>
+    public const string InputDateFormat = "yyyy-MM-dd";
+
+    /// <summary>
+    /// <see cref="InputDateFormat"/> in flatpickr's token language, for its <c>dateFormat</c> option.
+    /// </summary>
+    /// <remarks>
+    /// The two have to say the same thing: flatpickr writes the input's value in this format and the
+    /// server parses it with the other, so a mismatch means every date is rejected.
+    /// </remarks>
+    public const string InputDateFormatForFlatpickr = "Y-m-d";
+
     public const string DateTimeFormat = "yyyy'/'MM'/'dd HH':'mm";
 
     /// <summary>A calendar date, e.g. <c>2026/09/23 UTC</c>.</summary>

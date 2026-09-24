@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace BTCPayServer.Plugins.LightningTerminal.Services;
 
 /// <summary>
@@ -23,6 +25,32 @@ public static class AccountRules
         label is { Length: AccountIdHexLength } && label.All(Uri.IsHexDigit);
 
     /// <summary>
+    /// Parses the expiry the account form posts, which is a date or nothing at all.
+    /// </summary>
+    /// <remarks>
+    /// Parsed exactly, against the invariant culture, rather than left to model binding. The posted
+    /// text comes from a date picker in a format this plugin chose, and binding a DateTime would read
+    /// it through whatever culture the request carries - the sort of thing that silently swaps a day
+    /// and a month rather than failing.
+    /// </remarks>
+    /// <param name="value">The posted text, empty for an account that never expires.</param>
+    /// <param name="expiry">The moment it should stop working, or null for never.</param>
+    /// <returns>False only when text was supplied and could not be read as a date.</returns>
+    public static bool TryParseExpiry(string? value, out DateTimeOffset? expiry)
+    {
+        expiry = null;
+        if (string.IsNullOrWhiteSpace(value))
+            return true;
+
+        if (!DateTime.TryParseExact(value.Trim(), TerminalDates.InputDateFormat,
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
+            return false;
+
+        expiry = EndOfDayUtc(date);
+        return true;
+    }
+
+    /// <summary>
     /// The moment an account picked to expire on <paramref name="date"/> should stop working.
     /// </summary>
     /// <remarks>
@@ -32,10 +60,9 @@ public static class AccountRules
     /// seconds on the way in, which is why this does not need to be exact beyond the second.
     /// </para>
     /// <para>
-    /// The kind is stripped rather than trusted. A date picker gives a calendar date, not an instant,
-    /// but the model binder decides what <see cref="DateTimeKind"/> to hang on it - and
+    /// The kind is stripped rather than trusted. A calendar date is not an instant, and
     /// <c>new DateTimeOffset(local, TimeSpan.Zero)</c> throws outright on a server whose clock is not
-    /// UTC, which would be a 500 on the form rather than a validation error.
+    /// UTC - a 500 on the form rather than a validation error.
     /// </para>
     /// </remarks>
     public static DateTimeOffset EndOfDayUtc(DateTime date) =>

@@ -172,11 +172,15 @@ public class NewAccountViewModel
     public long BalanceSats { get; set; }
 
     /// <summary>
-    /// Null for an account that never expires, which is litd's zero and this form's default.
+    /// The expiry date as typed, or empty for an account that never expires - litd's zero, and this
+    /// form's default.
     /// </summary>
-    [DataType(DataType.Date)]
+    /// <remarks>
+    /// A string rather than a DateTime so the format is ours rather than the request culture's. See
+    /// AccountRules.TryParseExpiry.
+    /// </remarks>
     [Display(Name = "Expires on")]
-    public DateTime? Expiry { get; set; }
+    public string? Expiry { get; set; }
 }
 
 /// <param name="Hash">lnd's payment hash, hex.</param>

@@ -1,3 +1,4 @@
+using System.Globalization;
 using BTCPayServer.Plugins.LightningTerminal.Services;
 using BTCPayServer.Plugins.LightningTerminal.ViewModels;
 using Xunit;
@@ -24,6 +25,72 @@ public class AccountRulesTests
     [InlineData(null)]
     public void EverythingElseIsAllowed(string? label) =>
         Assert.False(AccountRules.LooksLikeAnAccountId(label));
+
+    [Fact]
+    public void AnEmptyExpiryMeansTheAccountNeverExpires()
+    {
+        // litd's zero, and the form's default.
+        foreach (var blank in new[] { null, "", "   " })
+        {
+            Assert.True(AccountRules.TryParseExpiry(blank, out var expiry));
+            Assert.Null(expiry);
+        }
+    }
+
+    [Fact]
+    public void AnExpiryIsReadInTheFormatTheFormPosts()
+    {
+        Assert.True(AccountRules.TryParseExpiry("2026-09-30", out var expiry));
+        Assert.Equal(new DateTimeOffset(2026, 9, 30, 23, 59, 59, TimeSpan.Zero).ToUnixTimeSeconds(),
+            expiry!.Value.ToUnixTimeSeconds());
+    }
+
+    [Theory]
+    [InlineData("de-DE")]
+    [InlineData("en-US")]
+    [InlineData("ar-SA")]
+    public void TheExpiryIsReadTheSameWayUnderEveryCulture(string culture)
+    {
+        // Parsed exactly against the invariant culture rather than left to model binding. Under en-US
+        // a bound DateTime would read 09/10 as September; under de-DE, as October. Same string, two
+        // different accounts, no error either way.
+        var previous = CultureInfo.CurrentCulture;
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo(culture);
+
+            Assert.True(AccountRules.TryParseExpiry("2026-09-10", out var expiry));
+            Assert.Equal(9, expiry!.Value.UtcDateTime.Month);
+            Assert.Equal(10, expiry.Value.UtcDateTime.Day);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = previous;
+        }
+    }
+
+    [Theory]
+    [InlineData("30/09/2026")]   // day first
+    [InlineData("09/30/2026")]   // month first
+    [InlineData("2026/09/30")]   // the display format, which is not the input format
+    [InlineData("2026-13-01")]   // no such month
+    [InlineData("2026-02-30")]   // no such day
+    [InlineData("tomorrow")]
+    public void AnythingElseIsRejectedRatherThanGuessedAt(string value)
+    {
+        // Better a form error than an account that quietly expires on a date nobody chose.
+        Assert.False(AccountRules.TryParseExpiry(value, out var expiry));
+        Assert.Null(expiry);
+    }
+
+    [Fact]
+    public void ThePickerAndTheParserAgreeOnTheFormat()
+    {
+        // flatpickr writes the input's value with its own token language and the server reads it with
+        // .NET's. If these drift apart every date is rejected, and only at run time.
+        Assert.Equal("yyyy-MM-dd", TerminalDates.InputDateFormat);
+        Assert.Equal("Y-m-d", TerminalDates.InputDateFormatForFlatpickr);
+    }
 
     [Fact]
     public void ExpiringOnADateMeansTheEndOfThatDay()

@@ -46,8 +46,17 @@
 
             <div class="form-group">
                 <label asp-for="Expiry" class="form-label"></label>
-                <input asp-for="Expiry" type="date" class="form-control"/>
-                <div class="form-text">Leave empty for an account that does not expire.</div>
+                @* Not <input type="date">: that renders the browser's locale format, which no
+                   attribute can change - a US browser shows mm/dd/yyyy. BTCPay ships flatpickr on
+                   every page and site.js initialises anything with .flatdtpicker, taking per-instance
+                   options from data-fdtp, so the format is ours on every browser. *@
+                <input asp-for="Expiry" type="text" class="form-control flatdtpicker"
+                       placeholder="@TerminalDates.InputDateFormat"
+                       data-fdtp="@Safe.Json(new { enableTime = false, dateFormat = TerminalDates.InputDateFormatForFlatpickr, allowInput = true })"/>
+                <div class="form-text">
+                    Leave empty for an account that does not expire. Dates are
+                    <code>@TerminalDates.InputDateFormat</code>.
+                </div>
                 <span asp-validation-for="Expiry" class="text-danger"></span>
             </div>
 

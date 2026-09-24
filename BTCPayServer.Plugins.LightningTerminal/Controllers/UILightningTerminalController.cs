@@ -289,12 +289,15 @@ public class UILightningTerminalController(
             ModelState.AddModelError(nameof(model.Label),
                 $"A label of {AccountRules.AccountIdHexLength} hex characters would be mistaken for an account ID.");
 
+        if (!AccountRules.TryParseExpiry(model.Expiry, out var expiry))
+            ModelState.AddModelError(nameof(model.Expiry),
+                $"Enter the date as {TerminalDates.InputDateFormat}, or leave it empty for an account that never expires.");
+
         if (!ModelState.IsValid)
             return View(model);
 
         try
         {
-            var expiry = model.Expiry is { } date ? AccountRules.EndOfDayUtc(date) : (DateTimeOffset?)null;
 
             var account = await client.CreateAccountAsync(
                 (ulong)model.BalanceSats, expiry, label, cancellationToken);
