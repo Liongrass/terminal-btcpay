@@ -228,15 +228,27 @@ public sealed class LitdClient(TerminalOptions options, LitdPaths paths, LitdCon
             _channel?.Dispose();
             _channelKey = UpstreamChannelKey;
             _channel = GrpcChannel.ForAddress(
-                $"http://{options.RpcHost}:{options.UpstreamHttpPort}",
-                new GrpcChannelOptions
-                {
-                    HttpHandler = new GrpcWebHandler(GrpcWebMode.GrpcWeb, new HttpClientHandler()),
-                    DisposeHttpClient = true
-                });
+                $"http://{options.RpcHost}:{options.UpstreamHttpPort}", UpstreamChannelOptions());
             return _channel;
         }
     }
+
+    /// <summary>
+    /// Channel options for litd's plaintext listener.
+    /// </summary>
+    /// <remarks>
+    /// The HTTP version pair is load-bearing, not tidiness. GrpcChannel stamps every request HTTP/2
+    /// regardless of the handler, and GrpcWebHandler only rewrites the framing - so without these the
+    /// client opens an HTTP/2 connection to a listener that only speaks HTTP/1.1 and the call dies
+    /// with PROTOCOL_ERROR before litd ever sees it. RequestVersionExact so nothing negotiates back up.
+    /// </remarks>
+    internal static GrpcChannelOptions UpstreamChannelOptions() => new()
+    {
+        HttpHandler = new GrpcWebHandler(GrpcWebMode.GrpcWeb, new HttpClientHandler()),
+        HttpVersion = System.Net.HttpVersion.Version11,
+        HttpVersionPolicy = HttpVersionPolicy.RequestVersionExact,
+        DisposeHttpClient = true
+    };
 
     private GrpcChannel GetHeadlessChannel()
     {
