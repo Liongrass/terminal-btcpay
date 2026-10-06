@@ -279,16 +279,17 @@ public class LitdFragmentTests
     }
 
     [Fact]
-    public void WipeRemovesBothFragmentsBeforeTheVolume()
+    public void WipeRemovesTheContainerBeforeTheVolumeAndBringsLitdBack()
     {
-        // Either fragment keeps a container attached to the volume, so `docker volume rm` would fail
-        // while one of them is still selected.
+        // A volume cannot be removed while a container is attached to it. litd then has to come back:
+        // this operation is about the data, and leaving the install alone is what Uninstall is for.
         var wipe = Mainnet.WipeCommand;
-        Assert.Contains(TerminalOptions.FragmentName, wipe);
-        Assert.Contains(TerminalOptions.UpstreamFragmentName, wipe);
+
         Assert.True(
-            wipe.IndexOf("btcpay-fragments remove", StringComparison.Ordinal) <
+            wipe.IndexOf($"docker rm -f {TerminalOptions.ContainerName}", StringComparison.Ordinal) <
             wipe.IndexOf("docker volume rm", StringComparison.Ordinal));
+        Assert.Contains("btcpay-up.sh", wipe);
+        Assert.DoesNotContain("btcpay-fragments", wipe);
     }
 
     [Fact]

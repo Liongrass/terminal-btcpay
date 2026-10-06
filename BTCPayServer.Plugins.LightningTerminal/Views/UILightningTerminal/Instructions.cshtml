@@ -9,7 +9,7 @@
             "You may then either re-install litd or remove all data entirely."),
         _ => (
             "Wipe Lightning Terminal data",
-            "This removes litd and then destroys its data volume. There is no undo.",
+            "This destroys litd's data and starts it again empty. There is no undo.",
             (string?)null)
     };
     ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer[title]));

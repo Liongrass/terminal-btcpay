@@ -200,32 +200,29 @@ public class LitdFragment(TerminalOptions options)
         """;
 
     /// <summary>
-    /// Removes litd and then destroys its data volume. Irreversible: the macaroon, every LNC session,
-    /// every Loop/Pool/Faraday record and litd's own database go with it. LND's own data is in a
-    /// separate volume and is not touched.
+    /// Destroys litd's data volume and brings litd back empty. Irreversible: the macaroon, every LNC
+    /// session, every Loop/Pool/Faraday record and litd's own database go with it. LND's own data is in
+    /// a separate volume and is not touched.
     /// </summary>
     /// <remarks>
-    /// Both the generated fragment and btcpayserver-docker's own are deselected, because either of them
-    /// keeps a container attached to the volume, and each is removed only if it is actually selected -
-    /// <c>btcpay-fragments</c> rebuilds and restarts the whole stack on every call, selected or not.
+    /// Deliberately leaves the fragment selected. The container is removed rather than deselected
+    /// because a volume cannot be removed while a container is attached to it, and <c>btcpay-up.sh</c>
+    /// then recreates litd from the same fragment with an empty volume. That keeps this one operation
+    /// about the data, leaves installation to Uninstall, and avoids rebuilding the whole stack twice.
     /// </remarks>
     public string WipeCommand =>
         $$"""
         (
         set -eu
         . /etc/profile.d/btcpay-env.sh
-        for fragment in {{TerminalOptions.FragmentName}} {{TerminalOptions.UpstreamFragmentName}}; do
-            if btcpay-fragments show | jq -e --arg f "$fragment" '.additionalFragments | index($f) != null' > /dev/null; then
-                btcpay-fragments remove "$fragment"
-            fi
-        done
-        rm -f "$BTCPAY_BASE_DIRECTORY/{{RelativePath}}"
+        docker rm -f {{TerminalOptions.ContainerName}}
         volume="$(docker volume ls -q | grep -E '(^|_){{TerminalOptions.DataVolumeName}}$' || true)"
         if [ -n "$volume" ]; then
             docker volume rm "$volume"
         else
             echo "No {{TerminalOptions.DataVolumeName}} volume found - nothing left to wipe."
         fi
+        btcpay-up.sh
         )
         """;
 }
