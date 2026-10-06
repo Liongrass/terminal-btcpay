@@ -12,12 +12,15 @@ public class LitdPathsTests : IDisposable
 {
     private readonly string _root = Directory.CreateTempSubdirectory("litd-paths-tests").FullName;
 
+    /// <summary>litd's own directory inside the shared volume - what the fragment's --lit-dir points at.</summary>
+    private string LitDir => Path.Combine(_root, TerminalOptions.LitdSubdirectory);
+
     private LitdPaths PathsFor(string network) =>
         new(new TerminalOptions(_root, "lnd_lit", 8443, network));
 
     private void Write(string relativePath, string content = "x")
     {
-        var full = Path.Combine(_root, relativePath);
+        var full = Path.Combine(LitDir, relativePath);
         Directory.CreateDirectory(Path.GetDirectoryName(full)!);
         File.WriteAllText(full, content);
     }
@@ -56,9 +59,9 @@ public class LitdPathsTests : IDisposable
 
         var paths = PathsFor("mainnet");
 
-        Assert.Equal(Path.Combine(_root, "tls.cert"), paths.TlsCertificateFile);
-        Assert.Equal(Path.Combine(_root, "mainnet", "lit.macaroon"), paths.MacaroonFile);
-        Assert.Equal(Path.Combine(_root, "logs", "mainnet", "litd.log"), paths.LogFile);
+        Assert.Equal(Path.Combine(LitDir, "tls.cert"), paths.TlsCertificateFile);
+        Assert.Equal(Path.Combine(LitDir, "mainnet", "lit.macaroon"), paths.MacaroonFile);
+        Assert.Equal(Path.Combine(LitDir, "logs", "mainnet", "litd.log"), paths.LogFile);
     }
 
     [Fact]
@@ -71,8 +74,8 @@ public class LitdPathsTests : IDisposable
 
         var paths = PathsFor("testnet");
 
-        Assert.Equal(Path.Combine(_root, "testnet4", "lit.macaroon"), paths.MacaroonFile);
-        Assert.Equal(Path.Combine(_root, "logs", "testnet4", "litd.log"), paths.LogFile);
+        Assert.Equal(Path.Combine(LitDir, "testnet4", "lit.macaroon"), paths.MacaroonFile);
+        Assert.Equal(Path.Combine(LitDir, "logs", "testnet4", "litd.log"), paths.LogFile);
     }
 
     [Fact]
@@ -82,8 +85,8 @@ public class LitdPathsTests : IDisposable
         Write(Path.Combine("mainnet", "lit.macaroon"));
         Write(Path.Combine("testnet", "lit.macaroon"));
 
-        Assert.Equal(Path.Combine(_root, "mainnet", "lit.macaroon"), PathsFor("mainnet").MacaroonFile);
-        Assert.Equal(Path.Combine(_root, "testnet", "lit.macaroon"), PathsFor("testnet").MacaroonFile);
+        Assert.Equal(Path.Combine(LitDir, "mainnet", "lit.macaroon"), PathsFor("mainnet").MacaroonFile);
+        Assert.Equal(Path.Combine(LitDir, "testnet", "lit.macaroon"), PathsFor("testnet").MacaroonFile);
     }
 
     [Fact]
@@ -96,7 +99,19 @@ public class LitdPathsTests : IDisposable
 
         Write(Path.Combine("mainnet", "lit.macaroon"));
 
-        Assert.Equal(Path.Combine(_root, "mainnet", "lit.macaroon"), paths.MacaroonFile);
+        Assert.Equal(Path.Combine(LitDir, "mainnet", "lit.macaroon"), paths.MacaroonFile);
+    }
+
+    [Fact]
+    public void LitdsOwnDirectoryIsNestedInsideTheSharedVolume()
+    {
+        // The volume carries every litd-family daemon's directory, so litd's own files sit one level
+        // down. The volume answers "installed"; .lit appearing inside it answers "started".
+        var options = new TerminalOptions(_root, "lnd_lit", 8443, "mainnet");
+
+        Assert.Equal(_root, options.LitVolumeDirectory);
+        Assert.Equal(Path.Combine(_root, ".lit"), options.LitDataDirectory);
+        Assert.True(new LitdPaths(options).DataDirectoryMounted);
     }
 
     public void Dispose() => Directory.Delete(_root, recursive: true);

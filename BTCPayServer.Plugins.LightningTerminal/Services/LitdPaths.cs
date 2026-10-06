@@ -13,11 +13,12 @@ namespace BTCPayServer.Plugins.LightningTerminal.Services;
 public class LitdPaths(TerminalOptions options)
 {
     /// <summary>
-    /// True when litd's data directory is mounted into this container at all, which is this
-    /// plugin's primary "is litd installed here" signal. It can only be true if the generated
+    /// True when litd's data volume is mounted into this container at all, which is this
+    /// plugin's primary "is litd installed here" signal. Deliberately the volume and not litd's own
+    /// directory inside it, which only appears once litd has run. It can only be true if the generated
     /// fragment is in the deployment's compose file and the stack has been brought up with it.
     /// </summary>
-    public bool DataDirectoryMounted => Directory.Exists(options.LitDataDirectory);
+    public bool DataDirectoryMounted => Directory.Exists(options.LitVolumeDirectory);
 
     /// <summary>litd's self-signed TLS certificate, or null before litd has ever started.</summary>
     public string? TlsCertificateFile => ExistingFile(Path.Combine(options.LitDataDirectory, "tls.cert"));

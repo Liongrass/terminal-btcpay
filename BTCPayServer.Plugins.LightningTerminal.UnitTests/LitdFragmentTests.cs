@@ -131,12 +131,15 @@ public class LitdFragmentTests
     [Fact]
     public void NothingReachesIntoBitcoinCoresDataDirectory()
     {
-        // Only Faraday's optional bitcoind connection ever needed it, and that defaults off.
+        // Only Faraday's optional bitcoind connection ever needed it, and that defaults off. Giving
+        // Faraday a working directory inside the shared volume is unrelated, so this asserts the
+        // bitcoind wiring is absent rather than that Faraday goes unmentioned.
         var service = Service(TerminalOptions.DefaultRpcHost);
 
         Assert.DoesNotContain(Strings(service, "volumes").Cast<string>(), mount => mount.StartsWith("bitcoin_datadir:"));
         Assert.DoesNotContain("bitcoind", Strings(service, "links").Cast<string>());
-        Assert.DoesNotContain("faraday", Mainnet.Yaml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("connect_bitcoin", Mainnet.Yaml, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("faraday.bitcoin", Mainnet.Yaml, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

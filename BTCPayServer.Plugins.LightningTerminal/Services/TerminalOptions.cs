@@ -27,9 +27,9 @@ public class TerminalOptions
         LndRpcPort = int.TryParse(configuration["terminallndrpcport"], out var lndPort) ? lndPort : DefaultLndRpcPort;
     }
 
-    internal TerminalOptions(string litDataDirectory, string rpcHost, int rpcPort, string network)
+    internal TerminalOptions(string litVolumeDirectory, string rpcHost, int rpcPort, string network)
     {
-        LitDataDirectory = litDataDirectory;
+        LitVolumeDirectory = litVolumeDirectory;
         RpcHost = rpcHost;
         RpcPort = rpcPort;
         Network = network.ToLowerInvariant();
@@ -61,8 +61,24 @@ public class TerminalOptions
     /// <summary>LND's self-signed TLS certificate.</summary>
     public string LndTlsCertificateFile => Path.Combine(LndDataDirectory, "tls.cert");
 
-    /// <summary>litd's <c>--lit-dir</c> (<c>lnd_lit_datadir</c>) as mounted into this container.</summary>
-    public string LitDataDirectory { get; }
+    /// <summary>
+    /// The <c>lnd_lit_datadir</c> volume as mounted into this container. It holds one directory per
+    /// litd-family daemon - <c>.lit</c>, <c>.loop</c>, <c>.pool</c>, <c>.faraday</c>, <c>.tapd</c> -
+    /// because the fragment gives each of them a working directory inside this single volume.
+    /// </summary>
+    /// <remarks>
+    /// This, rather than <see cref="LitDataDirectory"/>, is what answers "is litd installed here".
+    /// The volume exists as soon as the fragment is applied; litd only creates <c>.lit</c> inside it
+    /// on its first run, so testing the inner directory would report a freshly installed deployment
+    /// as missing until litd had started.
+    /// </remarks>
+    public string LitVolumeDirectory { get; }
+
+    /// <summary>litd's own working directory (its <c>--lit-dir</c>) inside <see cref="LitVolumeDirectory"/>.</summary>
+    public string LitDataDirectory => Path.Combine(LitVolumeDirectory, LitdSubdirectory);
+
+    /// <summary>litd's directory within the shared volume, matching the fragment's <c>--lit-dir</c>.</summary>
+    public const string LitdSubdirectory = ".lit";
 
     /// <summary>
     /// Compose service name of the litd container, which doubles as its DNS name. The generated

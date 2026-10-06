@@ -37,6 +37,13 @@ public class LitdFragment(TerminalOptions options)
     internal static bool AutopilotAvailableOn(string network) => network is "mainnet" or "testnet";
 
     /// <summary>litd's arguments, already indented as a YAML sequence under <c>command:</c>.</summary>
+    /// <summary>
+    /// Where the shared data volume is mounted inside litd's own container. Every litd-family daemon
+    /// gets a working directory beneath it, so one volume carries litd, loop, pool, faraday and tapd
+    /// state and a backup or a wipe is a single volume rather than five.
+    /// </summary>
+    private const string LitVolume = "/lit";
+
     private string CommandArguments => string.Join("\n", Arguments.Select(argument => $"      - \"{argument}\""));
 
     private IEnumerable<string> Arguments
@@ -44,6 +51,11 @@ public class LitdFragment(TerminalOptions options)
         get
         {
             yield return "--disableui";
+            yield return $"--lit-dir={LitVolume}/{TerminalOptions.LitdSubdirectory}";
+            yield return $"--loop.loopdir={LitVolume}/.loop";
+            yield return $"--pool.basedir={LitVolume}/.pool";
+            yield return $"--faraday.faradaydir={LitVolume}/.faraday";
+            yield return $"--taproot-assets.tapddir={LitVolume}/.tapd";
             yield return $"--httpslisten=0.0.0.0:{TerminalOptions.DefaultRpcPort}";
             yield return "--network=${NBITCOIN_NETWORK}";
             yield return "--lnd-mode=remote";
@@ -119,7 +131,7 @@ public class LitdFragment(TerminalOptions options)
             expose:
               - "{{TerminalOptions.DefaultRpcPort}}"
             volumes:
-              - "{{TerminalOptions.DataVolumeName}}:/root/.lit"
+              - "{{TerminalOptions.DataVolumeName}}:{{LitVolume}}"
               - "lnd_bitcoin_datadir:/data/lnd:ro"
             links:
               - {{LightningBackendDetector.BundledLndHost}}
