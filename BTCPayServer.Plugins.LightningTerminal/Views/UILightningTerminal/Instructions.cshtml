@@ -3,10 +3,6 @@
     // followUp is a second line under the lead, for the operations that have somewhere to go next.
     var (title, lead, followUp) = Model.Operation switch
     {
-        TerminalOperation.Switch => (
-            "Switch to the headless install",
-            "This swaps BTCPay's own Lightning Terminal fragment for this plugin's headless one. litd's data volume is kept, so accounts, sessions and history carry over.",
-            (string?)null),
         TerminalOperation.Uninstall => (
             "Uninstall Lightning Terminal",
             "This action removes litd from your BTCPay Server and restarts the instance. All data is kept.",
@@ -71,31 +67,6 @@
                 probably will not work as written. They are shown so you can adapt them to how your
                 deployment is actually built.
             </div>
-        }
-
-        @if (Model.Operation == TerminalOperation.Switch)
-        {
-            <div class="alert alert-info">
-                This runs <code>btcpay-fragments</code> twice - once to drop the old fragment, once to add
-                the new one - because each call rebuilds and restarts the stack as it goes. litd is down
-                between the two, and your deployment restarts twice.
-            </div>
-        }
-
-        @if (Model.Operation == TerminalOperation.Switch)
-        {
-            <h4 class="mt-4 mb-2">What the fragment does</h4>
-            <p class="text-muted">
-                It is btcpayserver-docker's own <code>@TerminalOptions.UpstreamFragmentName</code> with the
-                web UI turned off. With <code>--disableui</code> there is no UI password to generate, store
-                or rotate, and no need to publish litd's <code>/lit/</code> and gRPC endpoints on your public
-                BTCPay hostname - so this fragment does not add those routes. litd's data directory is
-                mounted read-only into the BTCPay Server container instead, which is how this plugin reads
-                its status, mints pairing sessions and fetches its logs.
-            </p>
-            <p class="text-muted">
-                The file is named <code>*.custom.yml</code>, which btcpayserver-docker keeps across updates.
-            </p>
         }
 
         <div class="mt-4">

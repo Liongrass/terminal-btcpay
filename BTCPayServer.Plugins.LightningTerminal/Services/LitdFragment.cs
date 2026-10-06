@@ -96,10 +96,10 @@ public class LitdFragment(TerminalOptions options)
     /// Trimmed relative to btcpayserver-docker's fragment, beyond turning the UI off:
     /// <list type="bullet">
     /// <item><description>
-    /// <c>--httpslisten</c> is set rather than <c>--insecure-httplisten</c>. Upstream needs the plaintext
-    /// listener because nginx proxies <c>/lit/</c> to it; this plugin speaks gRPC over TLS instead, so the
-    /// plaintext port is pure attack surface. It has to be set explicitly all the same: litd defaults
-    /// <c>--httpslisten</c> to <c>127.0.0.1:8443</c>, which no sibling container can reach.
+    /// <c>--httpslisten</c> is set rather than <c>--insecure-httplisten</c>: this plugin speaks gRPC
+    /// over TLS, so a plaintext port carrying macaroons would be pure attack surface. It has to be set
+    /// explicitly all the same - litd defaults <c>--httpslisten</c> to <c>127.0.0.1:8443</c>, which no
+    /// sibling container can reach.
     /// </description></item>
     /// <item><description>
     /// No <c>LIT_AUTO_MIGRATE_TO_SQL</c>. litd has defaulted to SQLite since v0.17 and only prompts when
@@ -182,28 +182,6 @@ public class LitdFragment(TerminalOptions options)
         {{Yaml}}
         LITD_FRAGMENT
         btcpay-fragments add {{TerminalOptions.FragmentName}}
-        )
-        """;
-
-    /// <summary>
-    /// Replaces btcpayserver-docker's own Lightning Terminal fragment with this plugin's headless one,
-    /// keeping litd's data volume and so the node's existing accounts, sessions and history.
-    /// </summary>
-    /// <remarks>
-    /// Two <c>btcpay-fragments</c> calls, because each one regenerates and restarts the stack the moment
-    /// it runs and there is no combined remove-and-add. litd is therefore down between them.
-    /// </remarks>
-    public string SwitchCommand =>
-        $"""
-        (
-        set -eu
-        . /etc/profile.d/btcpay-env.sh
-        cd "$BTCPAY_BASE_DIRECTORY/{FragmentDirectory}"
-        cat > {FileName} <<'LITD_FRAGMENT'
-        {Yaml}
-        LITD_FRAGMENT
-        btcpay-fragments remove {TerminalOptions.UpstreamFragmentName}
-        btcpay-fragments add {TerminalOptions.FragmentName}
         )
         """;
 

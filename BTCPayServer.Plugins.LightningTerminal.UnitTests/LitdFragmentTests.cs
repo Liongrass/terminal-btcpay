@@ -268,7 +268,6 @@ public class LitdFragmentTests
 
         Assert.DoesNotContain(executed, line => line.StartsWith("btcpay-fragments remove", StringComparison.Ordinal));
         Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", executed);
-        Assert.Contains($"btcpay-fragments remove {TerminalOptions.UpstreamFragmentName}", Mainnet.SwitchCommand);
     }
 
     [Fact]
@@ -293,13 +292,10 @@ public class LitdFragmentTests
     }
 
     [Fact]
-    public void SwitchKeepsTheDataVolumeWhileReplacingTheFragment()
+    public void TheFragmentDeclaresTheDataVolumeItKeepsAcrossReinstalls()
     {
-        var @switch = Mainnet.SwitchCommand;
-        Assert.Contains($"btcpay-fragments remove {TerminalOptions.UpstreamFragmentName}", @switch);
-        Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", @switch);
-        Assert.DoesNotContain("docker volume rm", @switch);
-        // Both fragments declare the volume under the same name, which is what carries the data over.
+        // Uninstall leaves this volume behind and a later install picks it straight back up, so the
+        // name is what carries accounts, sessions and history over.
         Assert.Contains(TerminalOptions.DataVolumeName, ((Dictionary<object, object>)Fragment["volumes"]).Keys.Cast<string>());
     }
 }

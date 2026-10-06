@@ -27,10 +27,6 @@ public record SubServer(string Name, bool Disabled, bool Running, string Error, 
 /// <param name="LndState">LND's wallet/RPC state as litd sees it, when litd could report it.</param>
 /// <param name="Error">Why litd could not be reached or queried. Null when it was.</param>
 /// <param name="LogAvailable">litd has written a log file that can be downloaded.</param>
-/// <param name="UpstreamUrl">
-/// Where litd's web UI is served, when this deployment looks like it runs btcpayserver-docker's own
-/// Lightning Terminal fragment instead of the one this plugin generates. Null otherwise.
-/// </param>
 /// <param name="Connection">Which litd install was found, and whether it can be talked to.</param>
 public record LitdStatus(
     bool Installed,
@@ -40,20 +36,10 @@ public record LitdStatus(
     WalletState? LndState,
     string? Error,
     bool LogAvailable,
-    Uri? UpstreamUrl,
     LitdConnectionInfo Connection)
 {
     /// <summary>True once litd is up and nothing it is running is in an error state.</summary>
     public bool Healthy => Running && Error is null && !SubServers.Any(s => s.HasError);
-
-    /// <summary>
-    /// litd is on this deployment through btcpayserver-docker's own fragment rather than this
-    /// plugin's. Still reachable - over the plaintext listener, once a UI password is supplied.
-    /// </summary>
-    public bool UpstreamOnly => Connection.Mode is LitdConnectionMode.Upstream;
-
-    /// <summary>litd is here but the plugin has no credential for it yet.</summary>
-    public bool NeedsUiPassword => Connection.NeedsUiPassword;
 
     /// <summary>
     /// No litd on this deployment at all, by either fragment - the only state in which there is
@@ -62,7 +48,7 @@ public record LitdStatus(
     /// <remarks>
     /// Deliberately not just <c>!Installed</c>: a deployment running the upstream fragment has litd,
     /// this plugin just cannot see into it, and pitching litd to someone already running it reads as a
-    /// bug. Exactly one of <see cref="Installed"/>, <see cref="UpstreamOnly"/> and this is ever true.
+    /// bug. Exactly one of <see cref="Installed"/> and this is ever true.
     /// </remarks>
     public bool NotFound => Connection.Mode is LitdConnectionMode.None;
 }
@@ -81,7 +67,7 @@ public class LitdStatusService(
         var logAvailable = info.CanReadLogs && paths.LogFile is not null;
 
         if (!installed)
-            return new LitdStatus(false, false, backend, [], null, null, false, info.UpstreamUrl, info);
+            return new LitdStatus(false, false, backend, [], null, null, false, info);
 
         try
         {
@@ -99,19 +85,19 @@ public class LitdStatusService(
             {
             }
 
-            return new LitdStatus(true, true, backend, subServers, lndState, null, logAvailable, info.UpstreamUrl, info);
+            return new LitdStatus(true, true, backend, subServers, lndState, null, logAvailable, info);
         }
         catch (RpcException ex)
         {
-            return new LitdStatus(true, false, backend, [], null, LitdClient.Explain(ex), logAvailable, info.UpstreamUrl, info);
+            return new LitdStatus(true, false, backend, [], null, LitdClient.Explain(ex), logAvailable, info);
         }
         catch (LitdNotReadyException ex)
         {
-            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, info.UpstreamUrl, info);
+            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, info);
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
-            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, info.UpstreamUrl, info);
+            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, info);
         }
     }
 
