@@ -16,6 +16,7 @@ public class LitdStatusTests
         Backend: new LightningBackend(LightningBackendKind.BundledLnd, "lnd-rest", "http://lnd_bitcoin:8080/"),
         SubServers: [],
         LndState: null,
+        Version: null,
         Error: null,
         LogAvailable: false,
         Connection: connection);

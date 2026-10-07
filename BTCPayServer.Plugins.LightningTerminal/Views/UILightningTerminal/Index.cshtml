@@ -43,10 +43,16 @@
         <h5 class="mb-0">
             <span class="me-2 btcpay-status btcpay-status--@dot"></span>@headline
         </h5>
-        @if (status.LndState is not null)
-        {
-            <span class="text-muted">LND: <code>@status.LndState</code></span>
-        }
+        <div class="d-flex gap-3 text-muted">
+            @if (status.Version is not null)
+            {
+                <span>litd: <code>@status.Version</code></span>
+            }
+            @if (status.LndState is not null)
+            {
+                <span>LND: <code>@status.LndState</code></span>
+            }
+        </div>
     </div>
 
     @if (status.Error is not null)

@@ -25,6 +25,7 @@ public record SubServer(string Name, bool Disabled, bool Running, string Error, 
 /// <param name="Backend">The Lightning implementation this deployment runs, and whether litd can use it.</param>
 /// <param name="SubServers">litd's own report on each sub-server it manages. Empty unless litd answered.</param>
 /// <param name="LndState">LND's wallet/RPC state as litd sees it, when litd could report it.</param>
+/// <param name="Version">litd's own version, when litd could report it.</param>
 /// <param name="Error">Why litd could not be reached or queried. Null when it was.</param>
 /// <param name="LogAvailable">litd has written a log file that can be downloaded.</param>
 /// <param name="Connection">Which litd install was found, and whether it can be talked to.</param>
@@ -34,6 +35,7 @@ public record LitdStatus(
     LightningBackend Backend,
     IReadOnlyList<SubServer> SubServers,
     WalletState? LndState,
+    string? Version,
     string? Error,
     bool LogAvailable,
     LitdConnectionInfo Connection)
@@ -73,13 +75,13 @@ public class LitdStatusService(
         var logAvailable = info.CanReadLogs && paths.LogFile is not null;
 
         if (!installed)
-            return new LitdStatus(false, false, backend, [], null, null, false, info);
+            return new LitdStatus(false, false, backend, [], null, null, null, false, info);
 
         // A legacy install has no macaroon and no certificate within reach, so there is nothing to ask
         // it. Reported as installed-but-not-running rather than attempted and failed, because the page
         // has a specific thing to say about it and a connection error would bury that.
         if (info.Mode is LitdConnectionMode.Legacy)
-            return new LitdStatus(true, false, backend, [], null, null, false, info);
+            return new LitdStatus(true, false, backend, [], null, null, null, false, info);
 
         try
         {
@@ -97,19 +99,33 @@ public class LitdStatusService(
             {
             }
 
-            return new LitdStatus(true, true, backend, subServers, lndState, null, logAvailable, info);
+            // Same tolerance, for the same reason: the version is a nicety, and litd refusing it must
+            // not cost the sub-server report that is the point of this page.
+            string? version = null;
+            try
+            {
+                version = await client.GetVersionAsync(cancellationToken);
+            }
+            catch (RpcException)
+            {
+            }
+            catch (LitdNotReadyException)
+            {
+            }
+
+            return new LitdStatus(true, true, backend, subServers, lndState, version, null, logAvailable, info);
         }
         catch (RpcException ex)
         {
-            return new LitdStatus(true, false, backend, [], null, LitdClient.Explain(ex), logAvailable, info);
+            return new LitdStatus(true, false, backend, [], null, null, LitdClient.Explain(ex), logAvailable, info);
         }
         catch (LitdNotReadyException ex)
         {
-            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, info);
+            return new LitdStatus(true, false, backend, [], null, null, ex.Message, logAvailable, info);
         }
         catch (Exception ex) when (ex is HttpRequestException or IOException)
         {
-            return new LitdStatus(true, false, backend, [], null, ex.Message, logAvailable, info);
+            return new LitdStatus(true, false, backend, [], null, null, ex.Message, logAvailable, info);
         }
     }
 

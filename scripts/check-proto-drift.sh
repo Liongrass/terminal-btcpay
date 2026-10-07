@@ -36,6 +36,7 @@ git clone --depth 1 --branch "$LITD_REF" "$LITD_REPO" "$WORK_DIR/litd" --quiet
 check "$WORK_DIR/litd" "litrpc/lit-sessions.proto" "litrpc/lit-sessions.proto"
 check "$WORK_DIR/litd" "litrpc/lit-status.proto" "litrpc/lit-status.proto"
 check "$WORK_DIR/litd" "litrpc/lit-accounts.proto" "litrpc/lit-accounts.proto"
+check "$WORK_DIR/litd" "litrpc/proxy.proto" "litrpc/proxy.proto"
 
 echo "Fetching $LND_REPO@$LND_REF..."
 git clone --depth 1 --branch "$LND_REF" "$LND_REPO" "$WORK_DIR/lnd" --quiet

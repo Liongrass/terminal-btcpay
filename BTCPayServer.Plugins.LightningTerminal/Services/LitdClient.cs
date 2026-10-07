@@ -41,6 +41,21 @@ public sealed class LitdClient(TerminalOptions options, LitdPaths paths) : IDisp
     }
 
     /// <summary>
+    /// litd's own version, the same string <c>litcli getinfo</c> prints.
+    /// </summary>
+    /// <remarks>
+    /// Authenticated, unlike Status: litd guards <c>/litrpc.Proxy/GetInfo</c> behind a
+    /// <c>proxy:read</c> permission, which the mounted lit.macaroon carries.
+    /// </remarks>
+    public async Task<string> GetVersionAsync(CancellationToken cancellationToken)
+    {
+        var client = new Litrpc.Proxy.ProxyClient(GetChannel());
+        var response = await client.GetInfoAsync(
+            new Litrpc.GetInfoRequest(), Authenticated(), Deadline(TimeSpan.FromSeconds(10)), cancellationToken);
+        return response.Version;
+    }
+
+    /// <summary>
     /// LND's own wallet/RPC state as litd sees it, which distinguishes "litd is up but LND is still
     /// locked or syncing" from "everything is running".
     /// </summary>
