@@ -215,7 +215,7 @@ Neither touches LND itself, its channels, or its funds: those live in a differen
 ```bash
 git submodule update --init --recursive   # pins BTCPay Server, built against as a ProjectReference
 dotnet build                              # compiles C# and Razor views
-dotnet test                               # fragment, pairing-URL, path, backend-detection and plugin-convention tests
+dotnet test                               # host-command, pairing-URL, path, backend-detection and plugin-convention tests
 ./scripts/plugin-register.sh              # load the plugin in a local BTCPay debug session
 ./scripts/build-plugin.sh                 # package a .btcpay
 ./scripts/check-proto-drift.sh            # fail if the vendored protos have gone stale
@@ -225,34 +225,35 @@ dotnet test                               # fragment, pairing-URL, path, backend
 
 | Path | What it is |
 | ---- | ---------- |
-| `Services/LitdFragment.cs` | The generated Compose fragment and the host commands around it |
+| `Services/LitdFragment.cs` | The host commands: install, update, uninstall, wipe |
 | `Services/LitdClient.cs` | gRPC to litd: status, LND state, sessions |
 | `Services/LitdPaths.cs` | Resolving the certificate, macaroon and log inside the mount |
 | `Services/LightningBackendDetector.cs` | The install gate — is this the bundled LND? |
 | `Services/TerminalConnect.cs` | litd's pairing-link encoding, reproduced |
 | `Protos/` | Vendored `.proto` files; see `Protos/VENDORED_COMMIT` |
 
-### Validating a change to the fragment
+### The fragment lives in btcpayserver-docker
 
-A broken fragment does not fail the build — it fails somebody's deployment. `dotnet test` covers its
-structure; to check it end-to-end against the real generator:
+This plugin generates no Compose fragment. litd is installed by selecting btcpayserver-docker's own
+`opt-add-lightning-terminal`, which runs litd headless and mounts its data volume into the BTCPay
+Server container — everything this plugin needs. Changes to how litd is run, and the litd release
+itself, belong in `docker-fragments/opt-add-lightning-terminal.yml` there, and are validated against
+that repository's own compose generator:
 
 ```bash
-git clone --depth 1 https://github.com/btcpayserver/btcpayserver-docker /tmp/bpsd
-# write LitdFragment.Yaml to:
-#   /tmp/bpsd/docker-compose-generator/docker-fragments/opt-add-lightning-terminal-headless.custom.yml
-cd /tmp/bpsd/docker-compose-generator
+cd btcpayserver-docker/docker-compose-generator
 BTCPAYGEN_CRYPTO1=btc BTCPAYGEN_REVERSEPROXY=nginx BTCPAYGEN_LIGHTNING=lnd \
-  BTCPAYGEN_ADDITIONAL_FRAGMENTS=opt-add-lightning-terminal-headless.custom \
-  dotnet run --project src/docker-compose-generator.csproj -c Release --no-launch-profile
-docker compose -f /tmp/bpsd/Generated/docker-compose.generated.yml config --quiet
+  BTCPAYGEN_ADDITIONAL_FRAGMENTS=opt-add-lightning-terminal \
+  dotnet run --project src/docker-compose-generator.csproj --no-launch-profile
 ```
+
+What this plugin pins instead are the paths and names it reads through that fragment —
+`TerminalOptions.DataVolumeName`, `ContainerName`, `LitDataDirectory` and `FragmentName`. If the
+fragment renames any of them, the plugin stops finding litd, so they are covered by tests here.
 
 ### Bumping litd
 
-`LitdFragment.Image` pins the release. Keep it in step with btcpayserver-docker's own pin in
-`opt-add-lightning-terminal.yml`, dropping the `-path-prefix` suffix — that rebuild exists only to
-serve the web UI, which this fragment turns off.
+The release is pinned in btcpayserver-docker, not here.
 
 Note that litd 0.17 migrates its database from bbolt to SQL on first start, and that migration is not
 reversible. Back up `lnd_lit_datadir` before bumping across it.

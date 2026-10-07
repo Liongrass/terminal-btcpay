@@ -92,7 +92,8 @@ public class UILightningTerminalController(
             Accounts = accounts,
             AccountsError = accountsError,
             DockerDeployment = serverOptions.DockerDeployment,
-            InstallCommand = fragment.InstallCommand
+            InstallCommand = fragment.InstallCommand,
+            UpdateCommand = fragment.UpdateCommand
         });
     }
 
@@ -215,8 +216,7 @@ public class UILightningTerminalController(
                 Type = TerminalConnect.TypeLabel(session.SessionType),
                 Expiry = DateTimeOffset.FromUnixTimeSeconds((long)session.ExpiryTimestampSeconds),
                 MailboxServer = session.MailboxServerAddr,
-                PairingPhrase = session.PairingSecretMnemonic,
-                PairingUrl = TerminalConnect.PairingUrl(session)
+                PairingPhrase = session.PairingSecretMnemonic
             });
         }
         catch (Exception ex) when (ex is RpcException or LitdNotReadyException)
@@ -410,8 +410,9 @@ public class UILightningTerminalController(
 
     private static TerminalSessionViewModel ToViewModel(Litrpc.Session session)
     {
-        var paired = !session.RemotePublicKey.IsEmpty;
-        var active = session.SessionState is Litrpc.SessionState.StateCreated or Litrpc.SessionState.StateInUse;
+        // Deliberately does not carry session.PairingSecretMnemonic. litd keeps the phrase and hands it
+        // back on every ListSessions, so a list that rendered it would re-show a credential that was
+        // meant to be seen once. The phrase is shown on the page that mints it and nowhere else.
         return new TerminalSessionViewModel
         {
             Label = session.Label,
@@ -419,9 +420,8 @@ public class UILightningTerminalController(
             Type = TerminalConnect.TypeLabel(session.SessionType),
             Expiry = DateTimeOffset.FromUnixTimeSeconds((long)session.ExpiryTimestampSeconds),
             LocalPublicKey = Convert.ToHexString(session.LocalPublicKey.ToByteArray()).ToLowerInvariant(),
-            Paired = paired,
-            Active = active,
-            PairingUrl = active && !paired ? TerminalConnect.PairingUrl(session) : null
+            Paired = !session.RemotePublicKey.IsEmpty,
+            Active = session.SessionState is Litrpc.SessionState.StateCreated or Litrpc.SessionState.StateInUse
         };
     }
 

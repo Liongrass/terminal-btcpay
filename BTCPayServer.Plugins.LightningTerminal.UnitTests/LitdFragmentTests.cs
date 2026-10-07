@@ -1,281 +1,63 @@
 using BTCPayServer.Plugins.LightningTerminal.Services;
 using Xunit;
-using YamlDotNet.Serialization;
 
 namespace BTCPayServer.Plugins.LightningTerminal.UnitTests;
 
 /// <summary>
-/// Guards the Compose fragment an operator is asked to paste onto their host. A mistake here does not
-/// throw at build time - it breaks someone's deployment when btcpay-setup.sh regenerates the stack.
+/// The commands this plugin asks an operator to paste into a root shell. Nothing here runs them, so
+/// what is checked is the shape an operator is handed: the right fragment, the right order, and the
+/// guards that stop a paste doing damage on a host it was not meant for.
 /// </summary>
 public class LitdFragmentTests
 {
-    /// <summary>A fragment as generated for a mainnet deployment, which is the default shape.</summary>
-    private static readonly LitdFragment Mainnet = FragmentFor("mainnet");
+    private static readonly LitdFragment Fragment = new();
 
-    private static readonly Dictionary<string, object> Fragment = Parse(Mainnet.Yaml);
-
-    internal static LitdFragment FragmentFor(string network) =>
-        new(new TerminalOptions(
-            "/lit", TerminalOptions.DefaultRpcHost, TerminalOptions.DefaultRpcPort, network));
-
-    private static Dictionary<string, object> Parse(string yaml) =>
-        new DeserializerBuilder().Build().Deserialize<Dictionary<string, object>>(yaml);
-
-    internal static List<string> ArgumentsFor(string network) =>
-        ((List<object>)((Dictionary<object, object>)((Dictionary<object, object>)
-            Parse(FragmentFor(network).Yaml)["services"])[TerminalOptions.DefaultRpcHost])["command"])
-        .Cast<string>().ToList();
-
-    private static Dictionary<object, object> Service(string name) =>
-        (Dictionary<object, object>)((Dictionary<object, object>)Fragment["services"])[name];
-
-    private static List<object> Strings(Dictionary<object, object> service, string key) =>
-        (List<object>)service[key];
-
-    [Fact]
-    public void LitdRunsHeadless()
-    {
-        var command = Strings(Service("lnd_lit"), "command").Cast<string>().ToList();
-
-        Assert.Contains("--disableui", command);
-        // The whole reason for a custom fragment: with no UI there is no password to generate, mount
-        // as a Compose secret, or protect.
-        Assert.DoesNotContain(command, argument => argument.Contains("uipassword", StringComparison.OrdinalIgnoreCase));
-        // No Compose secret to declare, mount or keep on the host. Asserted structurally, since the
-        // fragment's header comment mentions lit_password to explain its absence.
-        Assert.False(Fragment.ContainsKey("secrets"));
-        Assert.False(Service("lnd_lit").ContainsKey("secrets"));
-    }
-
-    [Fact]
-    public void LitdListensWhereThePluginDials()
-    {
-        // The invariant that makes the whole plugin work, and the one that is silently broken by
-        // omission: litd defaults --httpslisten to 127.0.0.1:8443, which is loopback inside its own
-        // container and unreachable from the BTCPay container. Nothing fails at build time; litd just
-        // never answers. Bound to the service name and port LitdClient actually dials.
-        var service = Service(TerminalOptions.DefaultRpcHost);
-        var command = Strings(service, "command").Cast<string>().ToList();
-
-        Assert.Contains($"--httpslisten=0.0.0.0:{TerminalOptions.DefaultRpcPort}", command);
-        Assert.Contains($"{TerminalOptions.DefaultRpcPort}", Strings(service, "expose").Select(port => port.ToString()));
-    }
+    public static TheoryData<string> EveryCommand =>
+    [
+        Fragment.InstallCommand,
+        Fragment.UpdateCommand,
+        Fragment.UninstallCommand,
+        Fragment.WipeCommand
+    ];
 
     [Theory]
-    [InlineData("regtest")]
-    public void AutopilotIsDisabledWhereLightningLabsRunsNoAutopilotServer(string network)
+    [MemberData(nameof(EveryCommand))]
+    public void EveryCommandIsAFailFastSubshell(string command)
     {
-        // litd resolves the Autopilot address from --network and, for anything but mainnet/testnet,
-        // returns "no autopilot server address specified" - which aborts startup. litd does not come up
-        // at all, so this is the difference between a working regtest deployment and a dead one.
-        Assert.Contains("--autopilot.disable", ArgumentsFor(network));
-    }
-
-    [Theory]
-    [InlineData("mainnet")]
-    [InlineData("testnet")]
-    public void AutopilotIsLeftOnWhereItWorks(string network)
-    {
-        // Disabling it everywhere would be the safe-looking choice and would quietly cost mainnet
-        // operators the Autopilot sessions Terminal offers.
-        Assert.DoesNotContain("--autopilot.disable", ArgumentsFor(network));
-    }
-
-    [Theory]
-    [InlineData("mainnet", true)]
-    [InlineData("testnet", true)]
-    [InlineData("regtest", false)]
-    [InlineData("simnet", false)]
-    [InlineData("signet", false)]
-    [InlineData("testnet4", false)]
-    public void AutopilotAvailabilityMirrorsLitdsOwnSwitch(string network, bool available)
-    {
-        // btcpay-setup.sh only accepts mainnet, testnet and regtest, so signet, testnet4 and simnet
-        // cannot reach us through btcpayserver-docker today. The rule is still written as litd's own,
-        // so it stays right if BTCPay ever widens that list - litd would reject those the same way.
-        Assert.Equal(available, LitdFragment.AutopilotAvailableOn(network));
+        // These are pasted into a root shell. An unset BTCPAY_BASE_DIRECTORY has to stop the block
+        // rather than resolve to a path under /, and a failure must not close the operator's session
+        // the way a bare exit would.
+        Assert.StartsWith("(\nset -eu\n", command, StringComparison.Ordinal);
+        Assert.EndsWith("\n)", command, StringComparison.Ordinal);
+        Assert.Contains(". /etc/profile.d/btcpay-env.sh", command, StringComparison.Ordinal);
     }
 
     [Fact]
-    public void ContainerIsNamedTheWayBtcpayNamesItsDaemons()
+    public void InstallSelectsBtcpaysOwnFragment()
     {
-        // btcpayserver_ plus the daemon's own name, as in btcpayserver_bitcoind and
-        // btcpayserver_lnd_bitcoin. Without container_name, Compose derives generated-lnd_lit-1, which
-        // is what an operator would otherwise find in docker ps.
-        Assert.Equal(TerminalOptions.ContainerName, Service(TerminalOptions.DefaultRpcHost)["container_name"]);
-        Assert.StartsWith("btcpayserver_", TerminalOptions.ContainerName);
+        // No custom fragment is written any more: the upstream one already runs litd headless and
+        // mounts its data volume here, so there is nothing left for this plugin to generate.
+        Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", Fragment.InstallCommand);
+        Assert.DoesNotContain("<<'LITD_FRAGMENT'", Fragment.InstallCommand);
+        Assert.DoesNotContain(".custom", Fragment.InstallCommand);
     }
 
     [Fact]
-    public void TheServiceNameIsNotRenamedAlongWithTheContainer()
+    public void UpdateRefreshesBtcpayRatherThanTouchingFragments()
     {
-        // The service name is litd's DNS name on the Docker network and is what upstream's fragment
-        // calls it too. Renaming it would move the address LitdClient dials and split this fragment
-        // from upstream's for anyone switching between the two, so only the container name changed.
-        Assert.Equal("lnd_lit", TerminalOptions.DefaultRpcHost);
-        Assert.True(((Dictionary<object, object>)Fragment["services"]).ContainsKey(TerminalOptions.DefaultRpcHost));
-        Assert.StartsWith(TerminalOptions.DefaultRpcHost, TerminalOptions.DataVolumeName);
-    }
-
-    [Fact]
-    public void NoPlaintextListenerIsOpened()
-    {
-        // Upstream opens one because nginx proxies /lit/ to it. This plugin speaks TLS gRPC instead,
-        // so a plaintext port carrying macaroons would be pure attack surface.
-        var command = Strings(Service(TerminalOptions.DefaultRpcHost), "command").Cast<string>().ToList();
-
-        Assert.DoesNotContain(command, argument => argument.Contains("insecure", StringComparison.OrdinalIgnoreCase));
-    }
-
-    [Fact]
-    public void NothingReachesIntoBitcoinCoresDataDirectory()
-    {
-        // Only Faraday's optional bitcoind connection ever needed it, and that defaults off. Giving
-        // Faraday a working directory inside the shared volume is unrelated, so this asserts the
-        // bitcoind wiring is absent rather than that Faraday goes unmentioned.
-        var service = Service(TerminalOptions.DefaultRpcHost);
-
-        Assert.DoesNotContain(Strings(service, "volumes").Cast<string>(), mount => mount.StartsWith("bitcoin_datadir:"));
-        Assert.DoesNotContain("bitcoind", Strings(service, "links").Cast<string>());
-        Assert.DoesNotContain("connect_bitcoin", Mainnet.Yaml, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("faraday.bitcoin", Mainnet.Yaml, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void NoSqlMigrationOverrideIsForced()
-    {
-        // litd has defaulted to SQLite since v0.17 and only prompts when it finds legacy kvdb files,
-        // so a fresh install never sees the prompt this used to suppress.
-        Assert.DoesNotContain("LIT_AUTO_MIGRATE_TO_SQL", Mainnet.Yaml);
-    }
-
-    [Fact]
-    public void OnlyTheGeneratedByLineSurvivesAsAComment()
-    {
-        var comments = Mainnet.Yaml
-            .Split('\n')
-            .Where(line => line.TrimStart().StartsWith('#'))
-            .ToArray();
-
-        Assert.Equal(["# Generated by the Lightning Terminal plugin"], comments);
-    }
-
-    [Fact]
-    public void NoPublicRoutesAreDeclared()
-    {
-        // Upstream's required-routes publishes /lit/ and the lnrpc./looprpc./poolrpc./litrpc. gRPC-web
-        // endpoints on the public BTCPay hostname. Headless litd needs none of that reachable.
-        Assert.False(Fragment.ContainsKey("required-routes"));
-        Assert.False(Fragment.ContainsKey("optional-routes"));
-        Assert.DoesNotContain("BTCPAY_EXTERNALSERVICES", Mainnet.Yaml);
-    }
-
-    [Fact]
-    public void LitdDataDirectoryIsMountedIntoBtcpay()
-    {
-        // This single mount is what lets the plugin read litd's certificate, macaroon and log without
-        // any host access. Read-only, because the plugin never writes into litd's directory.
-        var mounts = Strings(Service("btcpayserver"), "volumes").Cast<string>().ToList();
-        Assert.Contains($"{TerminalOptions.DataVolumeName}:/lit:ro", mounts);
-    }
-
-    [Fact]
-    public void LndGetsTheRpcMiddlewareLitdNeeds()
-    {
-        var environment = (Dictionary<object, object>)Service("lnd_bitcoin")["environment"];
-        Assert.Contains("rpcmiddleware.enable=true", (string)environment["LND_EXTRA_ARGS"]);
-    }
-
-    [Fact]
-    public void BundledLndIsRequired()
-    {
-        Assert.Contains("bitcoin-lnd", ((List<object>)Fragment["required"]).Cast<string>());
-
-        var command = Strings(Service("lnd_lit"), "command").Cast<string>().ToList();
-        Assert.Contains($"--remote.lnd.rpcserver={LightningBackendDetector.BundledLndHost}:10009", command);
-    }
-
-    [Fact]
-    public void ComposeVariablesSurviveVerbatim()
-    {
-        // ${NBITCOIN_NETWORK} must reach the file unexpanded, so Compose resolves it from the
-        // deployment's .env. The install snippet therefore has to use a *quoted* heredoc.
-        Assert.Contains("--network=${NBITCOIN_NETWORK}", Mainnet.Yaml);
-        Assert.Contains("<<'LITD_FRAGMENT'", Mainnet.InstallCommand);
-    }
-
-    [Fact]
-    public void InstallSnippetWritesTheFragmentWhereBtcpayFragmentsLooksForIt()
-    {
-        Assert.Equal($"{TerminalOptions.FragmentName}.yml", LitdFragment.FileName);
-        Assert.Equal($"{LitdFragment.FragmentDirectory}/{LitdFragment.FileName}", LitdFragment.RelativePath);
-        // The snippet cds into the directory and then redirects, rather than carrying the whole path on
-        // the redirect line - so assert on both halves, since neither appears as RelativePath any more.
-        Assert.Contains($"cd \"$BTCPAY_BASE_DIRECTORY/{LitdFragment.FragmentDirectory}\"", Mainnet.InstallCommand);
-        Assert.Contains($"cat > {LitdFragment.FileName} <<", Mainnet.InstallCommand);
-        Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", Mainnet.InstallCommand);
-        Assert.Contains(Mainnet.Yaml, Mainnet.InstallCommand);
-    }
-
-    [Fact]
-    public void FragmentNameIsAcceptedByBtcpayFragments()
-    {
-        // btcpay-fragments lowercases the name, strips a .yml suffix and then requires this shape.
-        Assert.Matches("^[a-z0-9][a-z0-9._-]*$", TerminalOptions.FragmentName);
-        // The .custom suffix is what keeps the file across btcpay-update.sh: btcpayserver-docker
-        // gitignores *.custom.yml inside its own fragment directory.
-        Assert.EndsWith(".custom", TerminalOptions.FragmentName);
-    }
-
-    [Fact]
-    public void InstallRefusesWhileBtcpaysOwnFragmentIsSelected()
-    {
-        // Both fragments declare an image for lnd_lit, and the generator merges services with
-        // SingleOrDefault(n => n.Children.ContainsKey("image")) - two of them throws, so
-        // btcpay-setup.sh dies with an unhandled .NET stack trace instead of a usable message.
-        var install = Mainnet.InstallCommand;
-
-        Assert.Contains($"btcpay-fragments show", install);
-        Assert.Contains(TerminalOptions.UpstreamFragmentName, install);
-        Assert.Contains("exit 1", install);
-    }
-
-    [Fact]
-    public void InstallChecksBeforeItWritesAnything()
-    {
-        // A refused run must leave no stray fragment file behind, so the guard has to come before the
-        // redirect rather than after it.
-        var install = Mainnet.InstallCommand;
-
-        Assert.True(
-            install.IndexOf("btcpay-fragments show", StringComparison.Ordinal) <
-            install.IndexOf($"cat > {LitdFragment.FileName}", StringComparison.Ordinal),
-            "the upstream check has to run before the fragment file is written");
-    }
-
-    [Fact]
-    public void InstallNeverRemovesAnythingItself()
-    {
-        // Taking down a running litd is the operator's decision. Install refuses and names the command
-        // in its error text; Switch is the path that runs it, because that is what switching means.
-        // Matched on executed lines, since install quotes the command inside an echo.
-        var executed = Mainnet.InstallCommand
-            .Split('\n')
-            .Select(line => line.Trim())
-            .Where(line => line.StartsWith("btcpay-fragments", StringComparison.Ordinal))
-            .ToArray();
-
-        Assert.DoesNotContain(executed, line => line.StartsWith("btcpay-fragments remove", StringComparison.Ordinal));
-        Assert.Contains($"btcpay-fragments add {TerminalOptions.FragmentName}", executed);
+        // The one answer to a litd installed by a superseded fragment: updating replaces it, and the
+        // data volume is declared under the same name by both, so nothing is lost.
+        Assert.Contains("btcpay-update.sh", Fragment.UpdateCommand);
+        Assert.DoesNotContain("btcpay-fragments", Fragment.UpdateCommand);
+        Assert.DoesNotContain("docker volume rm", Fragment.UpdateCommand);
     }
 
     [Fact]
     public void UninstallKeepsTheDataVolume()
     {
-        Assert.Contains($"btcpay-fragments remove {TerminalOptions.FragmentName}", Mainnet.UninstallCommand);
-        Assert.DoesNotContain("docker volume rm", Mainnet.UninstallCommand);
-        Assert.DoesNotContain("rm -f", Mainnet.UninstallCommand);
+        Assert.Contains($"btcpay-fragments remove {TerminalOptions.FragmentName}", Fragment.UninstallCommand);
+        Assert.DoesNotContain("docker volume rm", Fragment.UninstallCommand);
+        Assert.DoesNotContain("rm -f", Fragment.UninstallCommand);
     }
 
     [Fact]
@@ -283,7 +65,7 @@ public class LitdFragmentTests
     {
         // A volume cannot be removed while a container is attached to it. litd then has to come back:
         // this operation is about the data, and leaving the install alone is what Uninstall is for.
-        var wipe = Mainnet.WipeCommand;
+        var wipe = Fragment.WipeCommand;
 
         Assert.True(
             wipe.IndexOf($"docker rm -f {TerminalOptions.ContainerName}", StringComparison.Ordinal) <
@@ -293,10 +75,10 @@ public class LitdFragmentTests
     }
 
     [Fact]
-    public void TheFragmentDeclaresTheDataVolumeItKeepsAcrossReinstalls()
+    public void WipeMatchesTheVolumeUnderItsComposeProjectPrefix()
     {
-        // Uninstall leaves this volume behind and a later install picks it straight back up, so the
-        // name is what carries accounts, sessions and history over.
-        Assert.Contains(TerminalOptions.DataVolumeName, ((Dictionary<object, object>)Fragment["volumes"]).Keys.Cast<string>());
+        // Compose names the volume <project>_lnd_lit_datadir, so a literal `docker volume rm
+        // lnd_lit_datadir` would miss it on every real deployment.
+        Assert.Contains($"(^|_){TerminalOptions.DataVolumeName}$", Fragment.WipeCommand, StringComparison.Ordinal);
     }
 }

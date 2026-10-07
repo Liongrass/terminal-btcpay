@@ -22,11 +22,14 @@ public class TerminalIndexViewModel
     /// </summary>
     public required bool DockerDeployment { get; init; }
 
-    /// <summary>
-    /// The host commands that install litd. Built by the controller rather than reached for from the
-    /// view, because the fragment now depends on the deployment's network - see LitdFragment.
-    /// </summary>
+    /// <summary>The host command that installs litd.</summary>
     public required string InstallCommand { get; init; }
+
+    /// <summary>
+    /// The host command that updates btcpayserver-docker, offered when litd is running but was
+    /// installed by a fragment that predates the data-volume mount this plugin needs.
+    /// </summary>
+    public required string UpdateCommand { get; init; }
 
     /// <summary>litd's accounts. Empty when it has none, or when listing them failed.</summary>
     public IReadOnlyList<AccountViewModel> Accounts { get; init; } = [];
@@ -48,11 +51,6 @@ public class TerminalSessionViewModel
     /// <summary>True while the session can still be used - neither revoked nor expired.</summary>
     public required bool Active { get; init; }
 
-    /// <summary>
-    /// A link that pairs Terminal on the web with this session, present only while the session is
-    /// active and unpaired. A spent or dead phrase would be a link that silently does nothing.
-    /// </summary>
-    public string? PairingUrl { get; init; }
 }
 
 /// <summary>Which host-side operation the instructions page is walking the operator through.</summary>
@@ -131,7 +129,6 @@ public class SessionCreatedViewModel
     public required DateTimeOffset Expiry { get; init; }
     public required string MailboxServer { get; init; }
     public required string PairingPhrase { get; init; }
-    public required string PairingUrl { get; init; }
 }
 
 /// <summary>One of litd's accounts as shown in the list on the plugin's landing screen.</summary>

@@ -21,6 +21,7 @@ public class LitdStatusTests
         Connection: connection);
 
     private static LitdConnectionInfo None => new(LitdConnectionMode.None);
+    private static LitdConnectionInfo Legacy => new(LitdConnectionMode.Legacy);
     private static LitdConnectionInfo Headless => new(LitdConnectionMode.Headless);
 
     [Fact]
@@ -41,8 +42,30 @@ public class LitdStatusTests
         Assert.False(status.NotFound);
     }
 
+    [Fact]
+    public void ALegacyInstallIsInstalledButNotReachable()
+    {
+        // litd is running; this plugin simply has no way in. Distinct from not installed, because the
+        // page has to offer an update rather than an install, and distinct from an error, because
+        // nothing was attempted.
+        var status = StatusFor(Legacy);
+
+        Assert.True(status.Installed);
+        Assert.True(status.NeedsUpdate);
+        Assert.False(status.NotFound);
+        Assert.False(status.Running);
+    }
+
+    [Fact]
+    public void OnlyALegacyInstallAsksForAnUpdate()
+    {
+        Assert.False(StatusFor(None).NeedsUpdate);
+        Assert.False(StatusFor(Headless).NeedsUpdate);
+    }
+
     [Theory]
     [InlineData(LitdConnectionMode.None, false)]
+    [InlineData(LitdConnectionMode.Legacy, false)]
     [InlineData(LitdConnectionMode.Headless, true)]
     public void AuthenticationNeedsTheMountedMacaroon(LitdConnectionMode mode, bool canAuthenticate)
     {
@@ -53,6 +76,7 @@ public class LitdStatusTests
 
     [Theory]
     [InlineData(LitdConnectionMode.Headless, true)]
+    [InlineData(LitdConnectionMode.Legacy, false)]
     [InlineData(LitdConnectionMode.None, false)]
     public void OnlyAMountedDataDirectoryCanYieldLogs(LitdConnectionMode mode, bool canReadLogs)
     {
@@ -62,6 +86,7 @@ public class LitdStatusTests
 
     [Theory]
     [InlineData(LitdConnectionMode.None)]
+    [InlineData(LitdConnectionMode.Legacy)]
     [InlineData(LitdConnectionMode.Headless)]
     public void TheScreenStatesAreMutuallyExclusive(LitdConnectionMode mode)
     {
@@ -70,6 +95,8 @@ public class LitdStatusTests
         var status = StatusFor(new LitdConnectionInfo(mode));
 
         Assert.NotEqual(status.NotFound, status.Installed);
+        Assert.False(status.NotFound && status.NeedsUpdate);
         Assert.Equal(mode is LitdConnectionMode.None, status.NotFound);
+        Assert.Equal(mode is LitdConnectionMode.Legacy, status.NeedsUpdate);
     }
 }

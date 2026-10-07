@@ -3,13 +3,15 @@
     ViewData.SetLayoutModel(new LayoutModel(LightningTerminalPlugin.MenuItemId, StringLocalizer["Lightning Terminal"]));
 
     var status = Model.Status;
-    var (dot, headline) = !status.Installed
-        ? ("disabled", "Not installed")
-        : status.Healthy
-            ? ("enabled", "Running")
-            : status.Running
-                ? ("pending", "Running with errors")
-                : ("disabled", "Installed, but not running");
+    var (dot, headline) = status.NeedsUpdate
+        ? ("pending", "Running, not reachable")
+        : !status.Installed
+            ? ("disabled", "Not installed")
+            : status.Healthy
+                ? ("enabled", "Running")
+                : status.Running
+                    ? ("pending", "Running with errors")
+                    : ("disabled", "Installed, but not running");
 }
 
 <div class="sticky-header">
@@ -52,10 +54,24 @@
         <div class="alert alert-danger mt-3 mb-0">@status.Error</div>
     }
 
-    @if (!status.Installed)
+    @if (status.NeedsUpdate)
     {
         <hr/>
-        @* Only when there is no litd here at all - an upstream install is handled above. *@
+        @* litd is running, but by a fragment old enough that its data volume is not mounted here, so
+           there is no macaroon to connect with. Nothing on this page can fix that - updating
+           btcpayserver-docker replaces the fragment, and litd keeps its data either way. *@
+        <div class="alert alert-info mb-3">
+            <strong class="d-block mb-1">litd is running, but this plugin cannot reach it.</strong>
+            It was installed by an older version of BTCPay Server's Lightning Terminal fragment, which
+            does not give this plugin access to litd's macaroon. Updating your BTCPay Server replaces
+            that fragment with the current one. Your node, its channels and litd's own data are kept.
+        </div>
+        <p class="text-muted mb-2">Run this as root on your BTCPay Server host:</p>
+        <partial name="@LightningTerminalPlugin.HostCommandPartial" model="@Model.UpdateCommand"/>
+    }
+    else if (!status.Installed)
+    {
+        <hr/>
         @if (status.NotFound)
         {
             <p class="text-muted">
@@ -171,7 +187,8 @@
             <strong>Connect to Terminal</strong> mints an admin session with the usual defaults and opens
             Terminal on the web with its phrase already filled in. <strong>Generate pairing phrase</strong>
             lets you choose the label, type, lifetime and mailbox, and hands you the phrase for any LNC
-            client. A phrase pairs one client, once; revoke a session to cut that client off.
+            client. A phrase is shown once, pairs one client, and is not kept here afterwards; revoke a
+            session to cut that client off.
         </p>
 
         @if (Model.SessionsError is not null)
@@ -204,11 +221,6 @@
                             <td>@session.State</td>
                             <td>@session.Expiry.ToDisplayDateTime()</td>
                             <td class="text-end text-nowrap">
-                                @if (session.PairingUrl is { } pairingUrl)
-                                {
-                                    <a href="@pairingUrl" target="_blank" rel="noreferrer noopener"
-                                       class="btn btn-link btn-sm p-0 me-3">Open in Terminal</a>
-                                }
                                 @if (session.Active)
                                 {
                                     <form method="post" asp-action="RevokeSession" class="d-inline">

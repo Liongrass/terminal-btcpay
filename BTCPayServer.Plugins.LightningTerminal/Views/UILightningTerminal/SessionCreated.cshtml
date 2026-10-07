@@ -42,12 +42,7 @@
             </dl>
         </div>
 
-        @* Same hash-route link the sessions list uses: the phrase rides in the URL fragment, so it
-           reaches Terminal's page without ever reaching Terminal's server. *@
         <div class="d-flex gap-2">
-            <a href="@Model.PairingUrl" target="_blank" rel="noreferrer noopener" class="btn btn-primary">
-                Open in Terminal
-            </a>
             <a asp-action="Index" class="btn btn-secondary">Back to Lightning Terminal</a>
         </div>
     </div>

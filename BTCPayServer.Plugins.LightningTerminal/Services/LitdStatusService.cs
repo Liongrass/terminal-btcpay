@@ -38,6 +38,12 @@ public record LitdStatus(
     bool LogAvailable,
     LitdConnectionInfo Connection)
 {
+    /// <summary>
+    /// litd is here but was installed by a fragment that predates the data-volume mount, so this
+    /// plugin cannot reach it. Fixed by updating btcpayserver-docker, not by anything on this page.
+    /// </summary>
+    public bool NeedsUpdate => Connection.Mode is LitdConnectionMode.Legacy;
+
     /// <summary>True once litd is up and nothing it is running is in an error state.</summary>
     public bool Healthy => Running && Error is null && !SubServers.Any(s => s.HasError);
 
@@ -68,6 +74,12 @@ public class LitdStatusService(
 
         if (!installed)
             return new LitdStatus(false, false, backend, [], null, null, false, info);
+
+        // A legacy install has no macaroon and no certificate within reach, so there is nothing to ask
+        // it. Reported as installed-but-not-running rather than attempted and failed, because the page
+        // has a specific thing to say about it and a connection error would bury that.
+        if (info.Mode is LitdConnectionMode.Legacy)
+            return new LitdStatus(true, false, backend, [], null, null, false, info);
 
         try
         {

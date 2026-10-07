@@ -110,14 +110,11 @@ public class TerminalOptions
     public string Network { get; }
 
     /// <summary>
-    /// Basename of the custom fragment the operator is asked to add. The <c>.custom</c> suffix is
-    /// what makes btcpayserver-docker keep the file across updates (it is gitignored there), and
-    /// <c>btcpay-fragments</c> accepts it as an ordinary fragment name.
+    /// btcpayserver-docker's own Lightning Terminal fragment - the only one this plugin asks for. It
+    /// runs litd headless and mounts its data volume into the BTCPay container, which is everything
+    /// this plugin needs, so there is no custom fragment to generate or keep in step with upstream.
     /// </summary>
-    public const string FragmentName = "opt-add-lightning-terminal-headless.custom";
-
-    /// <summary>btcpayserver-docker's own Lightning Terminal fragment, which runs litd with its web UI.</summary>
-    public const string UpstreamFragmentName = "opt-add-lightning-terminal";
+    public const string FragmentName = "opt-add-lightning-terminal";
 
     /// <summary>
     /// What <c>docker ps</c> calls the litd container, following btcpayserver-docker's convention of
