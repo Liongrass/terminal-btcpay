@@ -18,8 +18,8 @@ public record SubServer(string Name, bool Disabled, bool Running, string Error, 
 
 /// <summary>Everything the plugin can tell an administrator about litd on this deployment.</summary>
 /// <param name="Installed">
-/// litd is on this deployment, by either fragment. Not the same as reachable - an upstream install
-/// still needs a UI password before anything can be asked of it.
+/// litd is on this deployment. Not the same as reachable - a litd installed by a fragment that
+/// predates the data-volume mount is installed but cannot be talked to.
 /// </param>
 /// <param name="Running">litd answered a gRPC call.</param>
 /// <param name="Backend">The Lightning implementation this deployment runs, and whether litd can use it.</param>

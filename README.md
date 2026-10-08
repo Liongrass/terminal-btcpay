@@ -10,91 +10,46 @@ again — keeping its data or wiping it.
 
 Installing this plugin does **not** install litd. That is a separate, deliberate step.
 
-## What makes this different from the stock install
+## How litd gets installed
 
-BTCPay Server can already run litd through btcpayserver-docker's
+BTCPay Server runs litd through btcpayserver-docker's
 [`opt-add-lightning-terminal`](https://docs.btcpayserver.org/Docker/lightning-terminal/) fragment.
-That fragment serves litd's web UI at `/lit/` on your public BTCPay hostname, behind a 64-character
-password kept in `secrets/lit_password` on the host.
+Installing it is one command, run as root on the BTCPay Server host:
 
-This plugin generates its own fragment instead: the same one, with `--disableui`.
+```bash
+btcpay-fragments add opt-add-lightning-terminal
+```
 
-|                        | `opt-add-lightning-terminal` | this plugin's fragment |
-| ---------------------- | ---------------------------- | ---------------------- |
-| litd web UI            | served at `/lit/`            | off (`--disableui`)    |
-| UI password            | generated, stored on host    | none — nothing to protect or rotate |
-| Public HTTP surface    | `/lit/` plus the `lnrpc.` / `looprpc.` / `poolrpc.` / `litrpc.` gRPC-web endpoints | none |
-| How you manage the node | litd's web UI                | this plugin, and Terminal on the web over LNC |
-| litd image             | `…-path-prefix` rebuild (needed only to serve the UI under `/lit/`) | the plain Lightning Labs release image |
-| litd's listener        | `--insecure-httplisten` on `:8080`, for nginx to proxy | `--httpslisten` on `:8443`, no plaintext port |
-| Bitcoin Core data dir  | mounted into litd, for Faraday's `connect_bitcoin` | not mounted |
-| Container name         | Compose-derived (`generated-lnd_lit-1`) | `btcpayserver_litd` |
+That fragment runs litd headless (`--disableui`) and mounts its data volume read-only into the BTCPay
+Server container, which is what lets this plugin read litd's certificate and macaroon and reach it
+over TLS gRPC on `lnd_lit:8443`. There is no web UI, so there is no password to store or rotate and
+nothing published on your public BTCPay hostname — you manage the node from this plugin, or from
+Terminal on the web over Lightning Node Connect.
 
-The remote-LND wiring, the `lnd_lit_datadir` volume and `rpcmiddleware.enable=true` on LND are
-identical to upstream's, deliberately — the two fragments share a volume name, so you can move
-between them without losing litd's data.
+This plugin generates no fragment of its own. How litd is run, and which release it pins, are decided
+in `docker-fragments/opt-add-lightning-terminal.yml` in btcpayserver-docker.
 
-Two further trims beyond turning the UI off:
+### If litd was installed the old way
 
-- **No plaintext listener.** Upstream needs `--insecure-httplisten` because nginx proxies `/lit/` to
-  it. This plugin speaks TLS gRPC, so a plaintext port carrying macaroons is pure attack surface.
-  `--httpslisten` has to be set explicitly all the same: litd defaults it to `127.0.0.1:8443`, which
-  is loopback inside litd's own container and unreachable from BTCPay's.
-- **No Faraday bitcoind wiring.** `connect_bitcoin` defaults off. Leaving it off costs the handful of
-  Faraday endpoints that need chain data, and in exchange litd has no mount into Bitcoin Core's data
-  directory. Add the four `--faraday.bitcoin.*` flags and the `bitcoin_datadir` mount back if you
-  want those endpoints.
+Earlier versions of that fragment served litd's web UI at `/lit/` behind a generated password, and did
+not mount litd's data volume into the BTCPay Server container. That leaves the plugin with no
+`lit.macaroon` to read and no TLS port it can reach, so it cannot talk to litd at all.
 
-On **regtest**, the fragment also passes `--autopilot.disable`. litd resolves the Lightning Labs
-Autopilot server address from its `--network` and, for anything but mainnet or testnet, returns
-`no autopilot server address specified` — which aborts startup rather than degrading one sub-server,
-so litd would never come up at all. Mainnet and testnet keep Autopilot. (btcpay-setup.sh only accepts
-mainnet, testnet and regtest, so those are the only three networks this can see; the rule is written
-as litd's own, which also covers signet and testnet4 should BTCPay ever allow them.)
+The plugin detects this and says so on its own page rather than offering to install litd a second
+time. The signal is free: the superseded fragment registers its web UI in `BTCPAY_EXTERNALSERVICES`
+and the current one registers nothing, so that entry without the mount means exactly one thing. The
+fix is to update BTCPay Server:
 
-`LIT_AUTO_MIGRATE_TO_SQL` is not set either: litd has defaulted to SQLite since v0.17 and only
-prompts when it finds legacy kvdb files, so a fresh install never sees that prompt. If you are
-switching from a long-lived upstream install that predates v0.17, litd will stop at the migration
-prompt on first start — its log says exactly which flag approves it.
+```bash
+btcpay-update.sh
+```
 
-## If you already run BTCPay's own fragment
-
-The plugin works with it, without changing anything on the deployment — but it has to connect
-differently, because that fragment gives it neither of the things the headless one does:
-
-- **No macaroon.** It does not mount `lnd_lit_datadir` into the BTCPay container, so there is no
-  `lit.macaroon` to read.
-- **No TLS port.** It never sets `--httpslisten`, which litd defaults to `127.0.0.1:8443` — loopback
-  inside litd's own container, unreachable from BTCPay's.
-
-What it does leave reachable is litd's plaintext listener on `lnd_lit:8080`, the one nginx proxies the
-web UI to. litd's proxy accepts **HTTP basic auth** there while its UI is enabled and resolves the
-right macaroon itself, so **litd's UI password stands in for the macaroon file**. Enter it under
-**Connection settings** and everything but log download works.
-
-Two consequences worth knowing:
-
-- **That connection is not encrypted.** litd offers no TLS port on the Docker network under this
-  fragment, so the password and every call cross it in the clear. Nothing leaves the deployment, and it
-  is the same port litd already serves its UI on — but it is plaintext.
-- **Logs are unavailable.** The log is a file in the unmounted data directory and litd has no log RPC.
-
-Switching to this plugin's fragment removes both: it mounts the macaroon, talks TLS, and keeps your
-accounts, sessions and history. The plugin offers that as an alternative rather than a requirement.
-
-**The two fragments cannot both be selected.** Each declares an image for the `lnd_lit` service, and
-the compose generator merges services with `SingleOrDefault(n => n.Children.ContainsKey("image"))` —
-two of them throws, so `btcpay-setup.sh` dies with an unhandled .NET stack trace. `btcpay-fragments`
-rolls the profile back, so nothing is left broken, but the message is useless. The install snippet
-therefore checks first and refuses with the removal command rather than letting you hit that; **Switch**
-is the path that removes BTCPay's fragment and adds this one in a single paste.
-
-Technically this path is gRPC-Web rather than gRPC — litd serves that port from a bare `http.Server`
-with no `h2c` wrapper, so there is no plaintext HTTP/2 to speak.
+Both versions declare litd's data volume under the same name, so updating replaces the fragment
+without touching litd's accounts, sessions or history.
 
 ## How it talks to litd
 
-The generated fragment mounts litd's data directory read-only into the BTCPay Server container:
+The fragment mounts litd's data volume read-only into the BTCPay Server container:
 
 ```yaml
 services:
@@ -103,9 +58,10 @@ services:
       - "lnd_lit_datadir:/lit:ro"
 ```
 
-That one line is what the whole plugin rests on. From it the plugin reads litd's TLS certificate,
-its macaroon and its log file, and then speaks gRPC to `lnd_lit:8443` over the deployment's internal
-Docker network — the same trust anchors `litcli` uses, from inside the same network. So status,
+That one line is what the whole plugin rests on. The volume holds a directory per litd-family daemon
+— `.lit`, `.loop`, `.pool`, `.faraday`, `.tapd` — and from `.lit` the plugin reads litd's TLS
+certificate, its macaroon and its log file, then speaks gRPC to `lnd_lit:8443` over the deployment's
+internal Docker network — the same trust anchors `litcli` uses, from inside the same network. So status,
 sub-server health, LNC sessions and logs all work with **no** access to the host.
 
 litd's certificate is self-signed and its SANs never cover the Compose service name, so the plugin
@@ -125,9 +81,9 @@ allowed_commands=(env help changedomain update clean restart)
 ```
 
 There is no fragment command in it, and the SSH key the container holds is pinned to a forced command,
-so there is no way around it either. The plugin therefore renders the exact commands — fragment YAML
-included — for you to paste into a root shell on the host, and detects the result afterwards. If
-btcpayserver-docker ever exposes fragment management through `btcpay-host`, this becomes one click.
+so there is no way around it either. The plugin therefore renders the exact command for you to paste
+into a root shell on the host, and detects the result afterwards. If btcpayserver-docker ever exposes
+fragment management through `btcpay-host`, this becomes one click.
 
 ## Install
 
@@ -206,7 +162,9 @@ page is gated on `CanModifyServerSettings` for that reason.
 - **Uninstall** deselects the fragment and regenerates the stack without litd. Nothing removes a named
   Compose volume, so `lnd_lit_datadir` — the macaroon, accounts, sessions, Loop/Pool/Faraday history —
   survives, and re-installing later picks it straight back up.
-- **Wipe** removes litd and then destroys that volume. Irreversible.
+- **Wipe** keeps the fragment selected but destroys that volume and brings litd back empty. The
+  container has to go first — a volume cannot be removed while something is attached to it — and
+  `btcpay-up.sh` recreates litd afterwards. Irreversible.
 
 Neither touches LND itself, its channels, or its funds: those live in a different volume.
 

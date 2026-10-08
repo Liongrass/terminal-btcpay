@@ -87,7 +87,7 @@ public class TerminalOptions
     public const string DefaultRpcHost = "lnd_lit";
 
     /// <summary>
-    /// litd's <c>--httpslisten</c> port, which the generated fragment sets explicitly.
+    /// litd's <c>--httpslisten</c> port, which the fragment sets explicitly.
     /// </summary>
     /// <remarks>
     /// litd defaults this to <c>127.0.0.1:8443</c> - loopback inside its own container, which a
