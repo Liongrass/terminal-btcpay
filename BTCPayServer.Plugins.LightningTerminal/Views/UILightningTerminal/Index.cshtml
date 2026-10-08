@@ -74,6 +74,11 @@
         </div>
         <p class="text-muted mb-2">Run this as root on your BTCPay Server host:</p>
         <partial name="@LightningTerminalPlugin.HostCommandPartial" model="@Model.UpdateCommand"/>
+        <p class="text-muted small mb-0 mt-3">
+            Uninstalling and wiping litd become available once this plugin can reach it. Update first:
+            both depend on how the current fragment names litd's container, and the older one names it
+            differently.
+        </p>
     }
     else if (!status.Installed)
     {
@@ -316,9 +321,12 @@
     </div>
 }
 
-@* Maintenance stays reachable whenever litd is installed, running or not: an operator whose litd
-   will not start is exactly the one who needs to uninstall or wipe it. *@
-@if (status.Installed)
+@* Maintenance stays reachable whether or not litd is running: an operator whose litd will not start
+   is exactly the one who needs to uninstall or wipe it. Not for a legacy install, though - wipe
+   removes litd's container by the name the current fragment gives it, which the older fragment does
+   not set, so the command would stop at "No such container". Updating is the answer there, and the
+   panel above says so. *@
+@if (status.Installed && !status.NeedsUpdate)
 {
     <div class="widget">
         <h5 class="mb-3">Maintenance</h5>
