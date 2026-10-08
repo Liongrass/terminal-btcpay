@@ -128,7 +128,10 @@
     }
 </div>
 
-@if (status.Installed)
+@* Subsystems, Sessions and Accounts are all read out of litd over gRPC. If litd did not answer -
+   because it is down, or because it was installed by a fragment this plugin cannot reach - they
+   would render as three empty tables with nothing to say, so they are not shown at all. *@
+@if (status.Running)
 {
     <div class="widget mb-4">
         <h5 class="mb-3">Subsystems</h5>
@@ -311,7 +314,12 @@
             </div>
         }
     </div>
+}
 
+@* Maintenance stays reachable whenever litd is installed, running or not: an operator whose litd
+   will not start is exactly the one who needs to uninstall or wipe it. *@
+@if (status.Installed)
+{
     <div class="widget">
         <h5 class="mb-3">Maintenance</h5>
         <div class="d-flex flex-wrap gap-2">
